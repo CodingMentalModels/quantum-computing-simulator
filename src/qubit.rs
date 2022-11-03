@@ -1,9 +1,14 @@
-use std::ops::{Mul, Add};
+use std::ops::{Mul};
+
+use nalgebra::ComplexField;
 
 use nalgebra::{UnitVector2, Complex, Vector2};
 use num_traits::identities::One;
 use num_traits::Zero;
 
+use rand::prelude::*;
+
+type Measurement = u8;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Qubit {
@@ -42,6 +47,17 @@ impl Qubit {
         self.state
     }
 
+    pub fn measure(&self) -> (Measurement, Self) {
+        let mut rng = rand::thread_rng();
+        let random_number = rng.gen_range(0.0_f32..1.0);
+        let probability_of_0 = self.state.into_inner().x.abs().powi(2);
+        if random_number < probability_of_0 {
+            (0, Self::basis_0())
+        } else {
+            (1, Self::basis_1())
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -65,4 +81,25 @@ mod test_qubit {
         assert!(mixed_state.almost_equals(&Qubit::new(UnitVector2::new_normalize(Vector2::new(Complex::one() * 0.25_f32.sqrt(), Complex::one() * 0.75_f32.sqrt())))));
         
     }
+
+    #[test]
+    fn test_qubit_measures() {
+        
+        let (basis_0_measurement, new_basis_0_qubit) = Qubit::basis_0().measure();
+        assert_eq!(basis_0_measurement, 0);
+        assert_eq!(new_basis_0_qubit, Qubit::basis_0());
+
+        let (basis_1_measurement, new_basis_1_qubit) = Qubit::basis_1().measure();
+        assert_eq!(basis_1_measurement, 1);
+        assert_eq!(new_basis_1_qubit, Qubit::basis_1());
+
+        let mixed_state = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.);
+
+        let (mixed_state_measurement, new_mixed_state_qubit) = mixed_state.measure();
+
+        assert!(mixed_state_measurement == 0 || mixed_state_measurement == 1);
+        assert!(new_mixed_state_qubit.almost_equals(&Qubit::basis_0()) || new_mixed_state_qubit.almost_equals(&Qubit::basis_1()));
+
+    }
+
 }
