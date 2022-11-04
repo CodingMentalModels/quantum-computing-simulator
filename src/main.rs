@@ -1,4 +1,4 @@
-mod nalgebra_traits;
+mod matrix;
 mod qubit;
 mod quantum_gate;
 mod quantum_circuit;
