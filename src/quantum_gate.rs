@@ -119,14 +119,16 @@ mod test_quantum_gate {
             }
         }
 
-        assert!(count_0s > 400);
-        assert!(count_1s > 400);
+        assert!(count_0s > 400); // Should be 50% = 500, so should be safe
+        assert!(count_1s > 400); // Should be 50% = 500, so should be safe
 
         // Circuit without measurement in the middle:
         // |0> -> H -> H => |0> with 100% probability, |1> with 0% probability
 
         let double_hadamarded_0 = hadamard_gate.apply(hadamarded_0);
         let (measurement, after_measurement) = double_hadamarded_0.measure();
+
+        assert!(double_hadamarded_0.almost_equals(&Qubit::basis_0()));
         assert_eq!(measurement, 0);
         assert!(after_measurement.almost_equals(&Qubit::basis_0()));
         
