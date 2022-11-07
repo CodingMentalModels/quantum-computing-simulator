@@ -8,7 +8,7 @@ use num_traits::Zero;
 
 use rand::prelude::*;
 
-type Measurement = u8;
+pub type Measurement = u8;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Qubit {
