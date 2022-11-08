@@ -1,7 +1,8 @@
 use std::f32::consts::SQRT_2;
 
-use nalgebra::{Vector2, DVector, Complex, Unit};
-use num_traits::One;
+use nalgebra::{Vector2, DVector, Complex, Unit, Normed};
+use num_traits::{One, Zero};
+use rand::Rng;
 
 use crate::qubit::{Qubit, Measurement};
 use crate::matrix::SquareMatrix;
@@ -31,22 +32,28 @@ impl QuantumRegister {
         Self::new_normalize(DVector::from_vec(vec![qubit.get_state().into_inner().x, qubit.get_state().into_inner().y]))
     }
 
-    pub fn fill(qubit: Qubit, size: usize) -> Self {
-        let (q_0, q_1) = (qubit.get_state().into_inner().x, qubit.get_state().into_inner().y);
-        let mut register_vec = Vec::new();
-        for _ in 0..size {
-            register_vec.push(q_0);
-            register_vec.push(q_1);
-        }
-        Self::new_normalize(DVector::from(register_vec))
+    pub fn basis(n_qubits: usize, i: usize) -> Self {
+        let state_vector_length = 2_usize.pow(n_qubits as u32);
+        let mut register = DVector::zeros(state_vector_length);
+        register[i] = Complex::one();
+        Self::new_normalize(register)
+    }
+
+    pub fn all_0s(n_qubits: usize) -> Self {
+        Self::basis(n_qubits, 0)
+    }
+
+    pub fn all_1s(n_qubits: usize) -> Self {
+        let state_vector_length = 2_usize.pow(n_qubits as u32);
+        Self::basis(n_qubits, state_vector_length - 1)
+    }
+
+    pub fn n_qubits(&self) -> usize {
+        self.register.len().checked_log2().expect("Register size is not a power of 2") as usize
     }
 
     pub fn len(&self) -> usize {
-        self.register.len() / 2
-    }
-
-    pub fn get_qubit(&self, index: usize) -> Qubit {
-        Qubit::new(Unit::new_normalize(Vector2::new(self.register[2 * index], self.register[2 * index + 1])))
+        self.register.len()
     }
 
     pub fn get_vector(&self) -> Unit<DVector<Complex<f32>>> {
@@ -57,20 +64,30 @@ impl QuantumRegister {
         (self.register.clone().into_inner() - rhs.into().register.clone().into_inner()).norm() < 0.0001
     }
 
-    pub fn measure(&self) -> (Vec<Measurement>, Self) {
-        let rng = rand::thread_rng();
-        let mut resulting_register = Vec::new();
-        let mut resulting_measurements = Vec::new();
+    pub fn get_coefficient(&self, i: usize) -> Complex<f32> {
+        self.register[i]
+    }
 
+    pub fn get_probability(&self, i: usize) -> f32 {
+        self.get_coefficient(i).norm().powi(2)
+    }
+
+    pub fn measure(&self) -> (Measurement, Self) {
+        let mut rng = rand::thread_rng();
+        let random_number = rng.gen_range(0.0_f32..1.0);
+        let mut probably_so_far = 0.;
+        
         for i in 0..self.len() {
-            let qubit = self.get_qubit(i);
-            let (measurement, new_qubit) = qubit.measure();
-            resulting_measurements.push(measurement);
-            resulting_register.push(new_qubit.get_state().into_inner().x);
-            resulting_register.push(new_qubit.get_state().into_inner().y);
+            let coefficient = self.get_coefficient(i);
+            probably_so_far += self.get_probability(i);
+            if random_number <= probably_so_far {
+                // This is the basis state to collapse to
+                let new_register = Self::basis(self.len(), i);
+                return (i as u8, new_register);
+            }
         }
 
-        return (resulting_measurements, Self::new_normalize(DVector::from(resulting_register)));
+        panic!("The measurement vector is unitary and so probability_so_far should count up to 1.0 > random_number");
     }
 
 }
@@ -94,10 +111,34 @@ impl QuantumGate {
         Self::new(SquareMatrix::from_vec_normalize(
             2,
             vec![
-                Complex::new(0.0, 0.0),
-                Complex::new(1.0, 0.0),
-                Complex::new(1.0, 0.0),
-                Complex::new(0.0, 0.0),
+                Complex::zero(),
+                Complex::one(),
+                Complex::one(),
+                Complex::zero(),
+            ]
+        ))
+    }
+
+    pub fn cnot() -> Self {
+        Self::new(SquareMatrix::from_vec_normalize(
+            4,
+            vec![
+                Complex::one(), // 00
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(), // 10
+                Complex::one(), // 11
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(), // 20
+                Complex::zero(),
+                Complex::zero(),
+                Complex::one(), // 23
+                Complex::zero(), // 30
+                Complex::zero(),
+                Complex::one(), // 32
+                Complex::zero(),
             ]
         ))
     }
@@ -123,7 +164,7 @@ impl QuantumGate {
     }
 
     pub fn n_qubits(&self) -> usize {
-        self.matrix.size() / 2
+        self.matrix.size().log2() as usize
     }
 
 }
@@ -138,17 +179,32 @@ mod test_quantum_gate {
     fn test_register_initializes() {
 
         let singleton = QuantumRegister::singleton(Qubit::basis_1());
-        assert_eq!(singleton.len(), 1);
-        assert_eq!(singleton.get_qubit(0), Qubit::basis_1());
+        assert_eq!(singleton.n_qubits(), 1);
+        assert_eq!(singleton.len(), 2);
+        assert_eq!(singleton.get_coefficient(0), Complex::zero());
+        assert_eq!(singleton.get_coefficient(1), Complex::one());
 
         let singleton = QuantumRegister::singleton(Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.));
-        assert_eq!(singleton.len(), 1);
-        assert_eq!(singleton.get_qubit(0), Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.));
+        assert_eq!(singleton.n_qubits(), 1);
+        assert_eq!(singleton.len(), 2);
+        assert_eq!(singleton.get_coefficient(0), Complex::one() * 0.5);
+        assert_eq!(singleton.get_coefficient(1), Complex::one() * 0.75_f32.sqrt());
 
-        let register = QuantumRegister::fill(Qubit::basis_0(), 2);
-        assert_eq!(register.len(), 2);
-        assert_eq!(register.get_qubit(0), Qubit::basis_0());
-        assert_eq!(register.get_qubit(1), Qubit::basis_0());
+        let register = QuantumRegister::all_0s(2);
+        assert_eq!(register.n_qubits(), 2);
+        assert_eq!(register.len(), 4);
+        assert_eq!(register.get_coefficient(0), Complex::one());
+        assert_eq!(register.get_coefficient(1), Complex::zero());
+        assert_eq!(register.get_coefficient(2), Complex::zero());
+        assert_eq!(register.get_coefficient(3), Complex::zero());
+
+        let register = QuantumRegister::all_1s(2);
+        assert_eq!(register.n_qubits(), 2);
+        assert_eq!(register.len(), 4);
+        assert_eq!(register.get_coefficient(0), Complex::zero());
+        assert_eq!(register.get_coefficient(1), Complex::zero());
+        assert_eq!(register.get_coefficient(2), Complex::zero());
+        assert_eq!(register.get_coefficient(3), Complex::one());
 
         
     }
@@ -214,6 +270,30 @@ mod test_quantum_gate {
     }
 
     #[test]
+    fn test_cnot_gate() {
+        
+        let cnot = QuantumGate::cnot();
+
+        let zero: Complex<f32> = Complex::zero();
+        let one = Complex::one();
+
+        assert_eq!(cnot.matrix.get(0, 0), one.clone());
+        assert_eq!(cnot.matrix.get(1, 1), one.clone());
+        assert_eq!(cnot.matrix.get(2, 3), one.clone());
+        assert_eq!(cnot.matrix.get(3, 2), one.clone());
+
+        let zero_zero = QuantumRegister::basis(2, 0);
+        let zero_one = QuantumRegister::basis(2, 1);
+        let one_one = QuantumRegister::basis(2, 2);
+        let one_zero = QuantumRegister::basis(2, 3);
+        
+        assert_eq!(cnot.clone().apply(zero_zero.clone()), zero_zero.clone());
+        assert_eq!(cnot.clone().apply(zero_one.clone()), zero_one.clone());
+        assert_eq!(cnot.clone().apply(one_zero.clone()), one_one.clone());
+        assert_eq!(cnot.clone().apply(one_one.clone()), one_zero.clone());
+    }
+
+    #[test]
     fn test_measurement_interference() {
 
         // Circuit with measurement in the middle:
@@ -236,7 +316,7 @@ mod test_quantum_gate {
             let (second_measurement, after_second_measurement) = hadamard_gate.apply(after_measurement).measure();
 
             assert!(after_second_measurement.almost_equals(Qubit::basis_0()) || after_second_measurement.almost_equals(Qubit::basis_1()));
-            if second_measurement[0] == 0 {
+            if second_measurement == 0 {
                 count_0s += 1;
             } else {
                 count_1s += 1;
@@ -253,7 +333,7 @@ mod test_quantum_gate {
         let (measurement, after_measurement) = double_hadamarded_0.measure();
 
         assert!(double_hadamarded_0.almost_equals(Qubit::basis_0()));
-        assert_eq!(measurement[0], 0);
+        assert_eq!(measurement, 0);
         assert!(after_measurement.almost_equals(Qubit::basis_0()));
         
 

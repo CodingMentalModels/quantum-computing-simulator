@@ -1,15 +1,24 @@
 use std::ops::Mul;
 
-use nalgebra::{UnitVector2, Complex, Vector2, DMatrix, Unit, Scalar, ComplexField, RealField, DVector};
+use nalgebra::{UnitVector2, Complex, Vector2, DMatrix, Unit, Scalar, ComplexField, RealField, DVector, Normed};
+use num_traits::One;
 
 #[derive(Clone, Debug)]
 pub struct SquareMatrix {
-    matrix: Unit<DMatrix<Complex<f32>>>,
+    matrix: DMatrix<Complex<f32>>,
 }
 
 impl PartialEq for SquareMatrix {
     fn eq(&self, rhs: &Self) -> bool {
-        (self.matrix.clone().into_inner() - rhs.matrix.clone().into_inner()).norm() < 0.0001
+        (self.matrix.clone() - rhs.matrix.clone()).norm() < 0.0001
+    }
+}
+
+impl Mul<SquareMatrix> for SquareMatrix {
+    type Output = SquareMatrix;
+    
+    fn mul(self, rhs: SquareMatrix) -> Self::Output {
+        SquareMatrix::new_unitary(self.matrix * rhs.matrix)
     }
 }
 
@@ -17,26 +26,24 @@ impl Mul<Unit<DVector<Complex<f32>>>> for SquareMatrix {
     type Output = DVector<Complex<f32>>;
 
     fn mul(self, rhs: Unit<DVector<Complex<f32>>>) -> Self::Output {
-        self.matrix.into_inner() * rhs.into_inner()
+        self.matrix * rhs.into_inner()
     }
 }
 
 impl SquareMatrix {
     
-    pub fn new(matrix: Unit<DMatrix<Complex<f32>>>) -> Self {
-        Self { matrix }
-    }
-    
-    pub fn new_normalize(matrix: DMatrix<Complex<f32>>) -> Self {
-        Self::new(Unit::<DMatrix<Complex<f32>>>::new_normalize(matrix))
+    pub fn new_unitary(matrix: DMatrix<Complex<f32>>) -> Self {
+        let determinant_norm: f32 = matrix.determinant().norm();
+        let normalizer = 1./determinant_norm;
+        Self {matrix: matrix.mul(normalizer * Complex::one()) }
     }
 
     pub fn from_vec_normalize(size: usize, vec: Vec<Complex<f32>>) -> Self {
-        Self::new_normalize(DMatrix::from_vec(size, size, vec))
+        Self::new_unitary(DMatrix::from_vec(size, size, vec))
     }
     
     pub fn identity(size: usize) -> Self {
-        Self::new_normalize(DMatrix::identity(size, size))
+        Self::new_unitary(DMatrix::identity(size, size))
     }
 
     pub fn one(size: usize) -> Self {
@@ -44,21 +51,23 @@ impl SquareMatrix {
     }
 
     pub fn almost_equals(&self, rhs: &Self) -> bool {
-        (self.matrix.clone().into_inner() - rhs.matrix.clone().into_inner()).norm() < 0.0001
+        (self.matrix.clone() - rhs.matrix.clone()).norm() < 0.0001
     }
 
     pub fn size(&self) -> usize {
         self.matrix.ncols()
     }
-    
-}
 
-impl Mul<SquareMatrix> for SquareMatrix {
-    type Output = SquareMatrix;
-    
-    fn mul(self, rhs: SquareMatrix) -> Self::Output {
-        SquareMatrix::new_normalize(self.matrix.into_inner() * rhs.matrix.into_inner())
+    pub fn get(&self, i: usize, j: usize) -> Complex<f32> {
+        let index = i * self.size() + j;
+        self.matrix[index]
     }
+
+    fn is_unitary(&self) -> bool {
+        let identity = Self::identity(self.size());
+        (self.matrix.clone() * self.matrix.clone().transpose() - identity.matrix).norm() < 0.0001
+    }
+    
 }
 
 #[cfg(test)]
@@ -66,7 +75,8 @@ mod test_nalgebra {
     use std::f32::consts::SQRT_2;
 
     use float_cmp::{assert_approx_eq, approx_eq};
-    use nalgebra::{Complex, Vector2, DMatrix};
+    use nalgebra::{Complex, Vector2, DMatrix, Normed};
+    use num_traits::{Zero, One};
 
     use super::*;
 
@@ -100,9 +110,37 @@ mod test_nalgebra {
     }
 
     #[test]
+    fn test_cnot_matrix_is_already_unitary() {
+        let cnot = DMatrix::<Complex<f32>>::from_vec(
+            4,
+            4,
+            vec![
+                Complex::one(), // 00
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(), // 10
+                Complex::one(), // 11
+                Complex::zero(),
+                Complex::zero(),
+                Complex::zero(), // 20
+                Complex::zero(),
+                Complex::zero(),
+                Complex::one(), // 23
+                Complex::zero(), // 30
+                Complex::zero(),
+                Complex::one(), // 32
+                Complex::zero(),
+            ]
+        );
+
+        assert!((cnot.determinant().norm() - 1.).abs() < 0.0001, "{}", cnot.determinant().norm());
+    }
+
+    #[test]
     fn test_square_matrix_instantiates() {
         
-        let m = SquareMatrix::new_normalize(
+        let m = SquareMatrix::new_unitary(
             DMatrix::from_vec(
                 2,
                 2,
@@ -114,6 +152,8 @@ mod test_nalgebra {
         );
 
         let id = SquareMatrix::one(2);
-        assert!(m.clone().almost_equals(&(id * m)));
+        let result = id.clone() * m.clone();
+        assert!(result.is_unitary(), "{}", result.matrix.determinant().norm());
+        assert!(m.clone().almost_equals(&(result.clone())), "{:?} * {:?} = {:?}", id, m.clone(), result.clone());
     }
 }

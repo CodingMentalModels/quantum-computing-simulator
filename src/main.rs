@@ -1,3 +1,5 @@
+#![feature(int_log)]
+
 mod matrix;
 mod qubit;
 mod quantum_gate;
