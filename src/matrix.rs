@@ -33,9 +33,15 @@ impl Mul<Unit<DVector<Complex<f32>>>> for SquareMatrix {
 impl SquareMatrix {
     
     pub fn new_unitary(matrix: DMatrix<Complex<f32>>) -> Self {
+        // Determinants are homogenous, meaning that:
+        // Det(cA) = c^N * Det(A), where N is the dimension of the matrix
+        // => to make Det(cA) = 1, we want Det(cA) = c^N * Det(A) = 1 => c = 1 / Det(A)^(1/N)
+        assert!(matrix.is_square());
         let determinant_norm: f32 = matrix.determinant().norm();
-        let normalizer = 1./determinant_norm;
-        Self {matrix: matrix.mul(normalizer * Complex::one()) }
+        let normalizer = 1./(determinant_norm.powf(1./(matrix.nrows() as f32)));
+        let normalized_matrix = matrix.scale(normalizer);
+        assert!((normalized_matrix.determinant().norm() - 1.).abs() < 0.0001, "Matrix is not unitary, {}", normalized_matrix.determinant().norm());
+        Self {matrix: normalized_matrix }
     }
 
     pub fn from_vec_normalize(size: usize, vec: Vec<Complex<f32>>) -> Self {
@@ -64,8 +70,7 @@ impl SquareMatrix {
     }
 
     fn is_unitary(&self) -> bool {
-        let identity = Self::identity(self.size());
-        (self.matrix.clone() * self.matrix.clone().transpose() - identity.matrix).norm() < 0.0001
+        (self.matrix.determinant().norm() - 1.).abs() < 0.0001
     }
     
 }
