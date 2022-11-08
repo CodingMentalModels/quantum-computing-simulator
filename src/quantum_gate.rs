@@ -1,6 +1,6 @@
 use std::f32::consts::SQRT_2;
 
-use nalgebra::{Vector2, DVector, Complex, Unit, Normed};
+use nalgebra::{Vector2, DVector, Complex, Unit, Normed, ComplexField};
 use num_traits::{One, Zero};
 use rand::Rng;
 
@@ -28,6 +28,18 @@ impl QuantumRegister {
         Self::new(Unit::<DVector<Complex<f32>>>::new_normalize(register))
     }
 
+    pub fn from_vec_normalize(vec: Vec<Complex<f32>>) -> Self {
+        Self::new_normalize(DVector::from_vec(vec))
+    }
+
+    pub fn from_int(n_qubits: usize, value: usize) -> Self {
+        let size = 2usize.pow(n_qubits as u32);
+        assert!(value < size);
+        let mut register = DVector::zeros(size);
+        register[value] = Complex::one();
+        Self::new_normalize(register)
+    }
+
     pub fn singleton(qubit: Qubit) -> Self {
         Self::new_normalize(DVector::from_vec(vec![qubit.get_state().into_inner().x, qubit.get_state().into_inner().y]))
     }
@@ -37,6 +49,14 @@ impl QuantumRegister {
         let mut register = DVector::zeros(state_vector_length);
         register[i] = Complex::one();
         Self::new_normalize(register)
+    }
+
+    pub fn all_bases(n_qubits: usize) -> Vec<Self> {
+        let mut bases = Vec::new();
+        for i in 0..2_usize.pow(n_qubits as u32) {
+            bases.push(Self::basis(n_qubits, i));
+        }
+        return bases;
     }
 
     pub fn all_0s(n_qubits: usize) -> Self {
@@ -78,7 +98,6 @@ impl QuantumRegister {
         let mut probably_so_far = 0.;
         
         for i in 0..self.len() {
-            let coefficient = self.get_coefficient(i);
             probably_so_far += self.get_probability(i);
             if random_number <= probably_so_far {
                 // This is the basis state to collapse to
@@ -103,8 +122,18 @@ impl QuantumGate {
         Self { matrix }
     }
 
-    pub fn identity(size: usize) -> Self {
-        Self::new(SquareMatrix::one(2*size))
+    pub fn identity(n_qubits: usize) -> Self {
+        assert!(n_qubits > 0);
+        Self::new(SquareMatrix::one(2*n_qubits))
+    }
+
+    pub fn global_rotation(n_qubits: usize, phase: f32) -> Self {
+        assert!(n_qubits > 0);
+        Self { matrix: SquareMatrix::identity(2usize.pow(n_qubits as u32)).scale(Complex::exp(phase * Complex::i())) }
+    }
+
+    pub fn tensor_product(&self, rhs: Self) -> Self {
+        Self::new(self.matrix.tensor_product(&rhs.matrix))
     }
 
     pub fn not() -> Self {
@@ -165,6 +194,10 @@ impl QuantumGate {
 
     pub fn n_qubits(&self) -> usize {
         self.matrix.size().log2() as usize
+    }
+
+    pub fn reverse(&self) -> Self {
+        Self::new(self.matrix.clone().invert())
     }
 
 }
@@ -337,5 +370,23 @@ mod test_quantum_gate {
         assert!(after_measurement.almost_equals(Qubit::basis_0()));
         
 
+    }
+
+
+    #[test]
+    fn test_register_measures() {
+
+        let register = QuantumRegister::from_int(
+            3,
+            4
+        );
+
+        assert_eq!(register.len(), 8);
+        assert_eq!(register.n_qubits(), 3);
+        
+        let (measurement, after_measurement) = register.measure();
+        assert_eq!(measurement, 4);
+        assert!(after_measurement.almost_equals(register));
+        
     }
 }

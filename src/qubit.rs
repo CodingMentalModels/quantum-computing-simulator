@@ -25,6 +25,10 @@ impl Qubit {
         Self::new(UnitVector2::new_normalize(state))
     }
 
+    pub fn from_coefficients_normalize(a: Complex<f32>, b: Complex<f32>) -> Self {
+        Self::new_normalize(Vector2::new(a, b))
+    }
+
     pub fn basis_0() -> Self {
         Self::new(UnitVector2::new_normalize(Vector2::new(Complex::one(), Complex::zero())))
     }

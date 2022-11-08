@@ -69,6 +69,18 @@ impl SquareMatrix {
         self.matrix[index]
     }
 
+    pub fn scale(&self, scalar: Complex<f32>) -> Self {
+        Self::new_unitary(self.matrix.clone().mul(scalar))
+    }
+    
+    pub fn tensor_product(&self, rhs: &Self) -> Self {
+        Self::new_unitary(self.matrix.kronecker(&rhs.matrix.clone()))
+    }
+
+    pub fn invert(&self) -> Self {
+        Self::new_unitary(self.matrix.clone().try_inverse().expect("All unitary square matrices are invertible"))
+    }
+
     fn is_unitary(&self) -> bool {
         (self.matrix.determinant().norm() - 1.).abs() < 0.0001
     }
@@ -160,5 +172,41 @@ mod test_nalgebra {
         let result = id.clone() * m.clone();
         assert!(result.is_unitary(), "{}", result.matrix.determinant().norm());
         assert!(m.clone().almost_equals(&(result.clone())), "{:?} * {:?} = {:?}", id, m.clone(), result.clone());
+    }
+
+    #[test]
+    fn test_square_matrix_tensor_products() {
+
+        let m = SquareMatrix::new_unitary(
+            DMatrix::from_vec(
+                2,
+                2,
+                vec![
+                    Complex::from(1.0_f32), Complex::from(2.0_f32),
+                    Complex::from(3.0_f32), Complex::from(4.0_f32),
+                ]
+            )
+        );
+
+        let id = SquareMatrix::one(2);
+
+        let result = id.clone().tensor_product(&m.clone());
+        assert!(result.is_unitary(), "{}", result.matrix.determinant().norm());
+
+        let expected = SquareMatrix::new_unitary(
+            DMatrix::from_vec(
+                4,
+                4,
+                vec![
+                    Complex::from(1.0_f32), Complex::from(2.0_f32), Complex::zero(), Complex::zero(),
+                    Complex::from(3.0_f32), Complex::from(4.0_f32), Complex::zero(), Complex::zero(),
+                    Complex::zero(), Complex::zero(), Complex::from(1.0_f32), Complex::from(2.0_f32),
+                    Complex::zero(), Complex::zero(), Complex::from(3.0_f32), Complex::from(4.0_f32),
+                ]
+            )
+        );
+
+        assert!(result.clone().almost_equals(&(expected.clone())), "{:?} * {:?} = {:?}", id, m.clone(), result.clone());
+        
     }
 }
