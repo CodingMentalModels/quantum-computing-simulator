@@ -82,7 +82,7 @@ impl QuantumRegister {
             probably_so_far += self.get_probability(i);
             if random_number <= probably_so_far {
                 // This is the basis state to collapse to
-                let new_register = Self::basis(self.len(), i);
+                let new_register = Self::basis(self.n_qubits(), i);
                 return (i as u8, new_register);
             }
         }
