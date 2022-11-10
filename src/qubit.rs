@@ -8,7 +8,7 @@ use num_traits::Zero;
 
 use rand::prelude::*;
 
-type Measurement = u8;
+pub type Measurement = u8;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Qubit {
@@ -23,6 +23,10 @@ impl Qubit {
 
     pub fn new_normalize(state: Vector2<Complex<f32>>) -> Self {
         Self::new(UnitVector2::new_normalize(state))
+    }
+
+    pub fn from_coefficients_normalize(a: Complex<f32>, b: Complex<f32>) -> Self {
+        Self::new_normalize(Vector2::new(a, b))
     }
 
     pub fn basis_0() -> Self {
@@ -99,6 +103,20 @@ mod test_qubit {
 
         assert!(mixed_state_measurement == 0 || mixed_state_measurement == 1);
         assert!(new_mixed_state_qubit.almost_equals(&Qubit::basis_0()) || new_mixed_state_qubit.almost_equals(&Qubit::basis_1()));
+
+        let mut count_0s = 0;
+        let mut count_1s = 0;
+        for _ in 0..1000 {
+            let (mixed_state_measurement, new_mixed_state_qubit) = mixed_state.measure();
+            if mixed_state_measurement == 0 {
+                count_0s += 1;
+            } else {
+                count_1s += 1;
+            }
+        }
+
+        assert!(count_0s > 200); // Expect 1/4 = 250, so this should be pretty safe
+        assert!(count_1s > 650); // Expect 3/4 = 750, so this should be pretty safe
 
     }
 

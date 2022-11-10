@@ -9,12 +9,9 @@
 
 ## Todo
 
-- Test nalgebra functionality to ensure it will work with our needs.
-    - Complex Numbers
-    - Matrices
-- `Qubit`
-- `QuantumGate`
-- Demonstrate interference effects using Hadamard gates.
+- `QuantumCircuit`
+    - Reimplement the interference example with `QuantumCircuit`
+    - Implement Quantum Fourier Transform and its inverse
 
 
 ## Concepts
