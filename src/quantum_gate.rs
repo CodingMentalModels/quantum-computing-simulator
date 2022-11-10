@@ -74,7 +74,7 @@ impl QuantumRegister {
         assert!(registers.iter().all(|x| x.n_qubits() == n_qubits));
         let mut register = DVector::zeros(registers[0].register.len());
         for r in registers {
-            register += r.register;
+            register = register + r.register.into_inner();
         }
         Self::new_normalize(register)
     }
