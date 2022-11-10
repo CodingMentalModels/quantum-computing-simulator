@@ -37,10 +37,10 @@ impl Qubit {
         Self::new(UnitVector2::new_normalize(Vector2::new(Complex::zero(), Complex::one())))
     }
 
-    pub fn mix(lhs: Self, rhs: Self, lhs_weight: f32, rhs_weight: f32) -> Self {
-        let lhs_coefficient = (lhs_weight / (lhs_weight + rhs_weight)).sqrt();
-        let rhs_coefficient = (rhs_weight / (lhs_weight + rhs_weight)).sqrt();
-        Self::new_normalize(lhs.state.into_inner().mul(Complex::one() * lhs_coefficient) + rhs.state.into_inner().mul(Complex::one() * rhs_coefficient))
+    pub fn mix(lhs: Self, rhs: Self, lhs_weight: impl Into<Complex<f32>> + Copy, rhs_weight: impl Into<Complex<f32>> + Copy) -> Self {
+        let lhs_coefficient = (lhs_weight.into() / (lhs_weight.into() + rhs_weight.into())).sqrt();
+        let rhs_coefficient = (rhs_weight.into() / (lhs_weight.into() + rhs_weight.into())).sqrt();
+        Self::new_normalize(lhs.state.into_inner().mul(lhs_coefficient) + rhs.state.into_inner().mul(rhs_coefficient))
     }
 
     pub fn almost_equals(&self, rhs: &Self) -> bool {

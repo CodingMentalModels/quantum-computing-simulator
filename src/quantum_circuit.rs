@@ -2,6 +2,10 @@ use crate::qubit::Qubit;
 use crate::quantum_gate::QuantumGate;
 use crate::quantum_gate::QuantumRegister;
 
+use std::f32::consts::{TAU, SQRT_2};
+
+use nalgebra::{Complex, ComplexField};
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct QuantumCircuit {
     n_qubits: usize,
@@ -233,6 +237,44 @@ mod test_quantum_circuit {
 
     }
 
+    #[test]
+    fn test_fourier_and_inverse_fourier_are_inverses() {
+        
+        let ft = QuantumCircuit::fourier_transform(4);
+        let ift = QuantumCircuit::inverse_fourier_transform(4);
 
+        for i in 0..15 {
+            let input = QuantumRegister::from_int(i, 4);
+            let output = ft.run(input.clone());
+            let output2 = ift.run(output);
+            assert!(output2.almost_equals(input));
+        }
+    }
+
+    #[test]
+    fn test_inverse_fourier_transform() {
+
+        // omega = 0.101
+        // => x1 = 1
+        // => x2 = 0
+        // => x3 = 1
+        // => 0.x3 = 0.1 = 1/2
+        // => 0.x2x3 = 0.01 = 1/4
+        // => 0.x1x2x3 = 0.101 = 5/8
+        let omega = 5.0 * TAU / 8.0;
+        
+        let ift = QuantumCircuit::inverse_fourier_transform(3);
+
+        let mut rotated_bases = Vec::new();
+        for idx in 0..8 {
+            let basis = QuantumRegister::basis(3, idx);
+            let rotated = basis.rotate((idx as f32) * omega);
+            rotated_bases.push(rotated.clone());
+        };
+
+        let input = QuantumRegister::mixture(rotated_bases);
+
+        assert!(ift.run(input.clone()).almost_equals(QuantumRegister::from_int(3, 5)));
+    }
 
 }

@@ -68,6 +68,17 @@ impl QuantumRegister {
         Self::basis(n_qubits, state_vector_length - 1)
     }
 
+    pub fn mixture(registers: Vec<Self>) -> Self {
+        assert!(registers.len() > 0);
+        let n_qubits = registers[0].n_qubits();
+        assert!(registers.iter().all(|x| x.n_qubits() == n_qubits));
+        let mut register = DVector::zeros(registers[0].register.len());
+        for r in registers {
+            register += r.register;
+        }
+        Self::new_normalize(register)
+    }
+
     pub fn n_qubits(&self) -> usize {
         self.register.len().checked_log2().expect("Register size is not a power of 2") as usize
     }
@@ -107,6 +118,12 @@ impl QuantumRegister {
         }
 
         panic!("The measurement vector is unitary and so probability_so_far should count up to 1.0 > random_number");
+    }
+
+    pub fn rotate(&self, phase: f32) -> Self {
+        let rotation_gate = QuantumGate::global_rotation(self.n_qubits(), phase);
+        let new_register = rotation_gate.apply(self.clone());
+        return new_register;
     }
 
 }
