@@ -2,6 +2,7 @@ use crate::qubit::Qubit;
 use crate::quantum_gate::QuantumGate;
 use crate::quantum_gate::QuantumRegister;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct QuantumCircuit {
     n_qubits: usize,
     gates: Vec<QuantumGate>,
@@ -182,5 +183,56 @@ mod test_quantum_circuit {
             assert!(reversed.run(basis.clone()).almost_equals(expected.run(basis)));
         }
     }
+
+
+    #[test]
+    fn test_measurement_interference() {
+
+        // Circuit with measurement in the middle:
+        // |0> -> H -> Measure -> H => |0> with 50% probability, |1> with 50% probability
+        
+        let hadamard_gate = QuantumGate::hadamard();
+        let mut hadamard_circuit = QuantumCircuit::new(1);
+        hadamard_circuit.add_gate(hadamard_gate.clone(), 0);
+        
+        let register = QuantumRegister::from(Qubit::basis_0());
+        
+        let hadamarded_0 = hadamard_circuit.run(register.clone());
+        
+        let mut count_0s = 0;
+        let mut count_1s = 1;
+        
+        for _ in 0..1000 {
+            let (measurement, after_measurement) = hadamarded_0.measure();
+
+            assert!(after_measurement.almost_equals(Qubit::basis_0()) || after_measurement.almost_equals(Qubit::basis_1()));
+
+            let (second_measurement, after_second_measurement) = hadamard_circuit.run(after_measurement).measure();
+
+            assert!(after_second_measurement.almost_equals(Qubit::basis_0()) || after_second_measurement.almost_equals(Qubit::basis_1()));
+            if second_measurement == 0 {
+                count_0s += 1;
+            } else {
+                count_1s += 1;
+            }
+        }
+
+        assert!(count_0s > 400); // Should be 50% = 500, so should be safe
+        assert!(count_1s > 400); // Should be 50% = 500, so should be safe
+
+        // Circuit without measurement in the middle:
+        // |0> -> H -> H => |0> with 100% probability, |1> with 0% probability
+
+        let mut full_circuit = hadamard_circuit.clone();
+        full_circuit.add_gate(hadamard_gate, 0);
+        let (measurement, after_measurement) = full_circuit.run(register).measure();
+
+        assert_eq!(measurement, 0);
+        assert!(after_measurement.almost_equals(Qubit::basis_0()));
+        
+
+    }
+
+
 
 }
