@@ -202,6 +202,10 @@ impl QuantumGate {
         Self::new(self.matrix.tensor_product(&rhs.matrix))
     }
 
+    pub fn compose(&self, rhs: &Self) -> Self {
+        Self::new(self.matrix.clone() * rhs.matrix.clone())
+    }
+
     pub fn not() -> Self {
         Self::new(SquareMatrix::from_vec_normalize(
             2,

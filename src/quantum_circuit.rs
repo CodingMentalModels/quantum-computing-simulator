@@ -19,29 +19,34 @@ impl QuantumCircuit {
     }
 
     pub fn add_gate(&mut self, gate: QuantumGate, input_qubits: Vec<usize>) {
+        assert!(gate.n_qubits() > 0);
+        assert!(gate.n_qubits() == input_qubits.len());
 
-        // Get the swap_subspace first even though we may not need it in order to check for errors
-        let swap_subspace = QuantumRegister::basis_subspace_indices(self.n_qubits, input_qubits.clone());
-
+        let mut sorted_qubits = input_qubits.clone();
+        sorted_qubits.sort();
+        assert!(sorted_qubits.iter().zip(sorted_qubits.iter().skip(1)).all(|(a, b)| a != b));
+        
         if input_qubits.len() == self.n_qubits {
             self.gates.push(gate);
             return;
         }
 
-        let identity_gate = QuantumGate::identity(self.n_qubits - input_qubits.len());
-        let mut gate_to_add = identity_gate.clone().tensor_product(gate);
-
-        // |000> -> |000>
-        // |001> -> |010>
-        // |010> -> |001>
-        // |011> -> |011>
-        // |100> -> |100>
-        // |101> -> |110>
-        // |110> -> |101>
-        // |111> -> |111>
-        for (i, j) in swap_subspace.iter().enumerate() {
-            gate_to_add.swap_bases(i, *j)
+        let mut next = 0;
+        while sorted_qubits.len() < self.n_qubits {
+            if sorted_qubits.contains(&next) {
+                next += 1;
+            } else {
+                sorted_qubits.push(next);
+                next += 1;
+            }
         }
+
+        let identity_gate = QuantumGate::identity(self.n_qubits - input_qubits.len());
+        let first_n_to_input_qubits = QuantumGate::permutation(sorted_qubits);
+        let input_qubits_to_first_n = first_n_to_input_qubits.reverse();
+        let gate_to_add = identity_gate.clone().tensor_product(gate);
+        let gate_to_add = gate_to_add.compose(&input_qubits_to_first_n);
+        let gate_to_add = first_n_to_input_qubits.compose(&gate_to_add);
         
         self.gates.push(gate_to_add);
 
@@ -202,10 +207,41 @@ mod test_quantum_circuit {
     fn test_quantum_circuit_adds_two_qubit_gates_in_the_middle() {
         let mut circuit = QuantumCircuit::new(4);
         circuit.add_gate(QuantumGate::cnot(), vec![1, 2]);
-        // |0100> -> |0110>
+        // |0000> -> |0000>
+        // |0001> -> |0001>
 
-        let expected = QuantumRegister::from_int(4, 6);
-        assert!(circuit.run(QuantumRegister::from_int(4, 4)).almost_equals(expected));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 0)).clone().almost_equals(QuantumRegister::from_int(4, 0)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 0)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 1)).clone().almost_equals(QuantumRegister::from_int(4, 1)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 1)));
+
+        // |0010> -> |0110>
+        // |0011> -> |0111>
+
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 2)).clone().almost_equals(QuantumRegister::from_int(4, 6)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 2)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 3)).clone().almost_equals(QuantumRegister::from_int(4, 7)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 3)));
+
+        // |0100> -> |0100>
+        // |0101> -> |0101>
+        
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 4)).clone().almost_equals(QuantumRegister::from_int(4, 4)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 4)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 5)).clone().almost_equals(QuantumRegister::from_int(4, 5)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 5)));
+
+        // |0110> -> |0010>
+        // |0111> -> |0011>
+
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 6)).clone().almost_equals(QuantumRegister::from_int(4, 2)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 6)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 7)).clone().almost_equals(QuantumRegister::from_int(4, 3)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 7)));
+
+        // |1000> -> |1000>
+        // |1001> -> |1001>
+
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 8)).clone().almost_equals(QuantumRegister::from_int(4, 8)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 8)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 9)).clone().almost_equals(QuantumRegister::from_int(4, 9)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 9)));
+
+        // |1010> -> |1110>
+        // |1011> -> |1111>
+
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 10)).clone().almost_equals(QuantumRegister::from_int(4, 14)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 10)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(4, 11)).clone().almost_equals(QuantumRegister::from_int(4, 15)), "{:?}", circuit.clone().run(QuantumRegister::from_int(4, 11)));
 
     }
 
