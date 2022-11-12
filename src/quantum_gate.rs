@@ -59,6 +59,35 @@ impl QuantumRegister {
         return bases;
     }
 
+    pub fn basis_subspace_indices(n_qubits: usize, qubit_indices: Vec<usize>) -> Vec<usize> {
+        assert!(n_qubits > 0);
+        assert!(qubit_indices.len() <= n_qubits);
+
+        let mut sorted_qubits = qubit_indices.clone();
+        sorted_qubits.sort();
+        assert!(sorted_qubits.iter().zip(sorted_qubits.iter().skip(1)).all(|(a, b)| a != b));
+        
+        let mut basis_indices = Vec::new();
+        for qubit_idx in sorted_qubits {
+            let new_bit_value = 2usize.pow(qubit_idx as u32);
+            if basis_indices.len() == 0 {
+                basis_indices.push(0);
+                basis_indices.push(new_bit_value);
+            } else {
+                for idx in 0..basis_indices.len() {
+                    basis_indices.push(basis_indices[idx] + new_bit_value);
+                }
+            }
+        }
+        return basis_indices;
+    }
+
+    pub fn basis_subspace(n_qubits: usize, qubit_indices: Vec<usize>) -> Vec<Self> {
+        Self::basis_subspace_indices(n_qubits, qubit_indices).iter()
+            .map(|&i| Self::basis(n_qubits, i))
+            .collect()
+    }
+
     pub fn all_0s(n_qubits: usize) -> Self {
         Self::basis(n_qubits, 0)
     }
@@ -92,7 +121,9 @@ impl QuantumRegister {
     }
 
     pub fn almost_equals(&self, rhs: impl Into<Self>) -> bool {
-        (self.register.clone().into_inner() - rhs.into().register.clone().into_inner()).norm() < 0.0001
+        let inner_rhs = rhs.into();
+        assert_eq!(self.n_qubits(), inner_rhs.clone().n_qubits());
+        (self.register.clone().into_inner() - inner_rhs.register.clone().into_inner()).norm() < 0.0001
     }
 
     pub fn get_coefficient(&self, i: usize) -> Complex<f32> {
@@ -141,12 +172,30 @@ impl QuantumGate {
 
     pub fn identity(n_qubits: usize) -> Self {
         assert!(n_qubits > 0);
-        Self::new(SquareMatrix::one(2*n_qubits))
+        Self::new(SquareMatrix::one(2usize.pow(n_qubits as u32)))
     }
 
     pub fn global_rotation(n_qubits: usize, phase: f32) -> Self {
         assert!(n_qubits > 0);
         Self { matrix: SquareMatrix::identity(2usize.pow(n_qubits as u32)).scale(Complex::exp(phase * Complex::i())) }
+    }
+
+    pub fn permutation(qubit_permutation: Vec<usize>) -> Self {
+        assert!(qubit_permutation.len() > 0);
+        let basis_size = 2usize.pow(qubit_permutation.len() as u32);
+        let mut permutation = Vec::new();
+        for i in 0..basis_size {
+            let mut new_i = 0;
+            for (qubit_start, qubit_end) in qubit_permutation.iter().enumerate() {
+                let start_value = i & (1 << qubit_start as u32);
+                let start_bit = start_value >> (qubit_start as u32);
+                assert!(start_bit == 0 || start_bit == 1);
+                let end_value = (start_bit << qubit_end);
+                new_i = new_i | end_value;
+            }
+            permutation.push(new_i);
+        }
+        Self::new(SquareMatrix::permutation(permutation))
     }
 
     pub fn tensor_product(&self, rhs: Self) -> Self {
@@ -215,6 +264,11 @@ impl QuantumGate {
 
     pub fn reverse(&self) -> Self {
         Self::new(self.matrix.clone().invert())
+    }
+
+    pub fn swap_bases(&mut self, i: usize, j: usize) {
+        let new_matrix = self.matrix.clone().swap_columns(i, j);
+        self.matrix = new_matrix;
     }
 
 }
@@ -344,6 +398,70 @@ mod test_quantum_gate {
     }
 
     #[test]
+    fn test_quantum_gate_swaps_bases() {
+        
+        let mut gate = QuantumGate::cnot();
+        gate.swap_bases(0, 0);
+        assert!(gate.almost_equals(&QuantumGate::cnot()));
+
+        gate.swap_bases(0, 1);
+
+        let zero_zero = QuantumRegister::basis(2, 0);
+        let zero_one = QuantumRegister::basis(2, 1);
+        let one_one = QuantumRegister::basis(2, 2);
+        let one_zero = QuantumRegister::basis(2, 3);
+
+        assert!(gate.apply(zero_zero.clone()).almost_equals(zero_one.clone()));
+        assert!(gate.apply(zero_one.clone()).almost_equals(zero_zero.clone()));
+        assert!(gate.apply(one_zero.clone()).almost_equals(one_one.clone()));
+        assert!(gate.apply(one_one.clone()).almost_equals(one_zero.clone()));
+    }
+
+    #[test]
+    fn test_permutation_matrix() {
+        // assert!(QuantumGate::permutation(vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
+        // assert_eq!(QuantumGate::permutation(vec![0, 1, 2]).n_qubits(), 3);
+        // assert_eq!(QuantumGate::identity(3).n_qubits(), 3);
+        // assert!(QuantumGate::permutation(vec![0, 1, 2]).almost_equals(&QuantumGate::identity(3)));
+
+        // |00> -> |00>
+        // |01> -> |10>
+        // |10> -> |01>
+        // |11> -> |11>
+        assert!(QuantumGate::permutation(vec![1, 0]).almost_equals(
+            &QuantumGate::new(
+                SquareMatrix::from_vec_normalize(4, vec![
+                    Complex::one(), Complex::zero(), Complex::zero(), Complex::zero(),
+                    Complex::zero(), Complex::zero(), Complex::one(), Complex::zero(),
+                    Complex::zero(), Complex::one(), Complex::zero(), Complex::zero(),
+                    Complex::zero(), Complex::zero(), Complex::zero(), Complex::one(),
+                ])
+            )
+        ));
+
+        
+        let rotation = QuantumGate::permutation(vec![2, 0, 1]);
+        // |000> -> |000>
+        // |001> -> |010>
+        // |010> -> |100>
+        // |011> -> |110>
+        // |100> -> |001>
+        // |101> -> |011>
+        // |110> -> |101>
+        // |111> -> |111>
+
+        assert!(rotation.apply(QuantumRegister::basis(3, 0)).almost_equals(QuantumRegister::basis(3, 0)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 1)).almost_equals(QuantumRegister::basis(3, 2)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 2)).almost_equals(QuantumRegister::basis(3, 4)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 3)).almost_equals(QuantumRegister::basis(3, 6)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 4)).almost_equals(QuantumRegister::basis(3, 1)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 5)).almost_equals(QuantumRegister::basis(3, 3)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 6)).almost_equals(QuantumRegister::basis(3, 5)));
+        assert!(rotation.apply(QuantumRegister::basis(3, 7)).almost_equals(QuantumRegister::basis(3, 7)));
+        
+    }
+
+    #[test]
     fn test_measurement_interference() {
 
         // Circuit with measurement in the middle:
@@ -389,6 +507,28 @@ mod test_quantum_gate {
 
     }
 
+    #[test]
+    fn test_quantum_register_instantiates_bases() {
+        assert!(
+            QuantumRegister::from_int(3, 2).almost_equals(
+                QuantumRegister::from_vec_normalize(
+                    vec![
+                        Complex::zero(),
+                        Complex::zero(),
+                        Complex::one(),
+                        Complex::zero(),
+                        Complex::zero(),
+                        Complex::zero(),
+                        Complex::zero(),
+                        Complex::zero()
+                    ]
+                )
+            ),
+            "{:?}",
+            QuantumRegister::from_int(3, 2)
+        );
+    }
+
 
     #[test]
     fn test_register_measures() {
@@ -405,5 +545,72 @@ mod test_quantum_gate {
         assert_eq!(measurement, 4);
         assert!(after_measurement.almost_equals(register));
         
+    }
+
+    #[test]
+    fn test_quantum_register_gets_basis_subspace_indices() {
+        assert_eq!(
+            QuantumRegister::basis_subspace_indices(1, vec![0]),
+            vec![0, 1]
+        );
+        
+        assert_eq!(
+            QuantumRegister::basis_subspace_indices(3, vec![1]),
+            vec![0, 2]
+        );
+    }
+
+    #[test]
+    fn test_quantum_register_gets_basis_subspace() {
+        
+        assert!(
+            QuantumRegister::basis_subspace(3, vec![0, 1, 2]).into_iter().zip(
+                QuantumRegister::all_bases(3)
+            ).all(|(x, y)| x.almost_equals(y))
+        );
+
+        assert!(
+            QuantumRegister::basis_subspace(3, vec![0]).into_iter().zip(
+                vec![
+                    QuantumRegister::from_int(3, 0),
+                    QuantumRegister::from_int(3, 1)
+                ]
+            ).all(|(x, y)| x.almost_equals(y))
+        );
+        
+        assert!(
+            QuantumRegister::basis_subspace(3, vec![1]).into_iter().zip(
+                vec![
+                    QuantumRegister::from_int(3, 0),
+                    QuantumRegister::from_int(3, 2)
+                ]
+            ).all(|(x, y)| x.almost_equals(y))
+        );
+
+        assert!(
+            QuantumRegister::basis_subspace(3, vec![0, 1]).into_iter().zip(
+                vec![
+                    QuantumRegister::from_int(3, 0),
+                    QuantumRegister::from_int(3, 1),
+                    QuantumRegister::from_int(3, 2),
+                    QuantumRegister::from_int(3, 3),
+                ]
+            ).all(|(x, y)| x.almost_equals(y))
+        );
+        
+        // |00> -> |000>
+        // |01> -> |001>
+        // |10> -> |100>
+        // |11> -> |101>
+        assert!(
+            QuantumRegister::basis_subspace(3, vec![0, 2]).into_iter().zip(
+                vec![
+                    QuantumRegister::from_int(3, 0),
+                    QuantumRegister::from_int(3, 1),
+                    QuantumRegister::from_int(3, 4),
+                    QuantumRegister::from_int(3, 5),
+                ]
+            ).all(|(x, y)| x.almost_equals(y))
+        );
     }
 }
