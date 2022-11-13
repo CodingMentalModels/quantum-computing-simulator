@@ -1,11 +1,23 @@
-use std::ops::Mul;
+use std::{ops::Mul, fmt::{Debug, Display, Formatter}};
 
 use nalgebra::{UnitVector2, Complex, Vector2, DMatrix, Unit, Scalar, ComplexField, RealField, DVector, Normed};
 use num_traits::{One, Zero};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SquareMatrix {
     matrix: DMatrix<Complex<f32>>,
+}
+
+impl Display for SquareMatrix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.matrix)
+    }
+}
+
+impl Debug for SquareMatrix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.matrix)
+    }
 }
 
 impl PartialEq for SquareMatrix {
@@ -244,24 +256,30 @@ mod test_nalgebra {
                 2,
                 2,
                 vec![
-                    Complex::from(1.0_f32), Complex::from(2.0_f32),
-                    Complex::from(3.0_f32), Complex::from(4.0_f32),
+                    Complex::from(1.0_f32),
+                    Complex::from(3.0_f32),
+                    Complex::from(2.0_f32),
+                    Complex::from(4.0_f32),
                 ]
             )
         );
 
-        assert!(matrix.swap_columns(0, 1).almost_equals(
+        assert!(matrix.clone().swap_columns(0, 1).almost_equals(
             &SquareMatrix::new_unitary(
                 DMatrix::from_vec(
                     2,
                     2,
                     vec![
-                        Complex::from(2.0_f32), Complex::from(1.0_f32),
-                        Complex::from(4.0_f32), Complex::from(3.0_f32),
+                        Complex::from(2.0_f32),
+                        Complex::from(4.0_f32),
+                        Complex::from(1.0_f32),
+                        Complex::from(3.0_f32),
                     ]
                 )
             )
-        )
+        ),
+        "{}",
+        matrix.swap_columns(0, 1)
     );
 
 

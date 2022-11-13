@@ -1,4 +1,5 @@
 use std::f32::consts::SQRT_2;
+use std::fmt::{Display, Formatter, Debug};
 
 use nalgebra::{Vector2, DVector, Complex, Unit, Normed, ComplexField};
 use num_traits::{One, Zero};
@@ -7,9 +8,22 @@ use rand::Rng;
 use crate::qubit::{Qubit, Measurement};
 use crate::matrix::SquareMatrix;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct QuantumRegister {
     register: Unit<DVector<Complex<f32>>>,
+}
+
+impl Debug for QuantumRegister {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.register)
+    }
+}
+
+impl Display for QuantumRegister {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = self.register.iter().map(|x| format!("{:?}", x)).collect::<Vec<String>>().join("\n");
+        write!(f, "{}", s)
+    }
 }
 
 impl From<Qubit> for QuantumRegister {
@@ -159,9 +173,21 @@ impl QuantumRegister {
 
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct QuantumGate {
     matrix: SquareMatrix,
+}
+
+impl Debug for QuantumGate {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.matrix)
+    }
+}
+
+impl Display for QuantumGate {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.matrix)
+    }
 }
 
 impl QuantumGate {
@@ -395,6 +421,10 @@ mod test_quantum_gate {
         let one_one = QuantumRegister::basis(2, 2);
         let one_zero = QuantumRegister::basis(2, 3);
         
+        // |00> -> |00>
+        // |01> -> |01>
+        // |10> -> |11>
+        // |11> -> |10>
         assert_eq!(cnot.clone().apply(zero_zero.clone()), zero_zero.clone());
         assert_eq!(cnot.clone().apply(zero_one.clone()), zero_one.clone());
         assert_eq!(cnot.clone().apply(one_zero.clone()), one_one.clone());
@@ -423,10 +453,10 @@ mod test_quantum_gate {
 
     #[test]
     fn test_permutation_matrix() {
-        // assert!(QuantumGate::permutation(vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
-        // assert_eq!(QuantumGate::permutation(vec![0, 1, 2]).n_qubits(), 3);
-        // assert_eq!(QuantumGate::identity(3).n_qubits(), 3);
-        // assert!(QuantumGate::permutation(vec![0, 1, 2]).almost_equals(&QuantumGate::identity(3)));
+        assert!(QuantumGate::permutation(vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
+        assert_eq!(QuantumGate::permutation(vec![0, 1, 2]).n_qubits(), 3);
+        assert_eq!(QuantumGate::identity(3).n_qubits(), 3);
+        assert!(QuantumGate::permutation(vec![0, 1, 2]).almost_equals(&QuantumGate::identity(3)));
 
         // |00> -> |00>
         // |01> -> |10>
@@ -462,6 +492,14 @@ mod test_quantum_gate {
         assert!(rotation.apply(QuantumRegister::basis(3, 5)).almost_equals(QuantumRegister::basis(3, 3)));
         assert!(rotation.apply(QuantumRegister::basis(3, 6)).almost_equals(QuantumRegister::basis(3, 5)));
         assert!(rotation.apply(QuantumRegister::basis(3, 7)).almost_equals(QuantumRegister::basis(3, 7)));
+        
+    }
+
+    #[test]
+    fn test_quantum_gate_composes() {
+
+        let first_n_to_inputs = QuantumGate::permutation(vec![1, 2, 0, 3]);
+        
         
     }
 
