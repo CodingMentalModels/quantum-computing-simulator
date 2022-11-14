@@ -536,6 +536,41 @@ mod test_quantum_circuit {
     }
 
     #[test]
+    fn test_inverse_fourier_transform_trivial() {
+        let ift = QuantumCircuit::inverse_fourier_transform(1);
+        
+        let non_rotated = QuantumRegister::basis(1, 0);
+        let rotated = QuantumRegister::mixture(vec![QuantumRegister::basis(1, 0), QuantumRegister::basis(1, 1)]);
+
+        let mut hadamard_only = QuantumCircuit::new(1);
+        hadamard_only.add_gate(QuantumGate::hadamard(), vec![0]);
+
+        assert!(hadamard_only.run(non_rotated.clone()).almost_equals(ift.run(non_rotated)));
+        assert!(hadamard_only.run(rotated.clone()).almost_equals(ift.run(rotated)));
+    }
+
+    #[test]
+    fn test_inverse_fourier_transform_simple() {
+        let ift = QuantumCircuit::inverse_fourier_transform(2);
+        let m = 2usize.pow(2);
+
+        let actual_0 = ift.run(QuantumRegister::from_int(2, 0));
+        let expected_0 = QuantumRegister::mixture(QuantumRegister::all_bases(2));
+        assert!(actual_0.almost_equals(expected_0));
+
+        let actual_1 = ift.run(QuantumRegister::from_int(2, 1));
+        let expected_1 = QuantumRegister::mixture(
+            vec![
+                QuantumRegister::basis(2, 0),
+                QuantumRegister::basis(2, 1).rotate(-TAU/4.),
+                QuantumRegister::basis(2, 1).rotate(-TAU/2.),
+                QuantumRegister::basis(2, 1).rotate(-3.*TAU/4.),
+                ]
+        );
+        assert!(actual_1.clone().almost_equals(expected_1.clone()), "\n\n{}\n\n vs. \n\n{}", actual_1.clone(), expected_1.clone());
+    }
+
+    #[test]
     fn test_inverse_fourier_transform() {
 
         let ift = QuantumCircuit::inverse_fourier_transform(3);
