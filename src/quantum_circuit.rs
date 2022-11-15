@@ -73,6 +73,10 @@ impl QuantumCircuit {
         return intermediate_register;
     }
 
+    pub fn get_gates(&self) -> Vec<QuantumGate> {
+        self.gates.clone()
+    }
+
     pub fn as_gate(&self) -> QuantumGate {
         let mut gate = QuantumGate::identity(self.n_qubits);
         for g in &self.gates {

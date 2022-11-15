@@ -10,6 +10,8 @@ const BASIS_DELTA_Y: f32 = 15.0;
 const COMPLEX_RECT_HEIGHT: f32 = 10.;
 const BASIS_OFFSET_X: f32 = 20.0;
 const PADDING: f32 = 10.0;
+const GATE_TO_REGISTER_DELTA_X: f32 = 50.0;
+const REGISTER_TO_GATE_DELTA_X: f32 = 50.0;
 
 pub struct Model {
     window: window::Id,
@@ -22,6 +24,9 @@ pub fn model(app: &App) -> Model {
 
     // Instantiation
     let mut circuit = QuantumCircuit::new(2);
+    circuit.add_gate(QuantumGate::hadamard(), vec![0]);
+    circuit.add_gate(QuantumGate::global_rotation(1, TAU/4.), vec![0]);
+    circuit.add_gate(QuantumGate::hadamard(), vec![1]);
     circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
     let input = QuantumRegister::basis(2, 0);
@@ -35,7 +40,18 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     draw.background().color(color::rgb_u32(BACKGROUND_COLOR));
     
-    draw_register(&draw, &model.input, Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.));
+    let mut xy = Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.);
+    draw_register(&draw, &model.input, xy);
+
+    let mut result = model.input.clone();
+    for gate in model.circuit.get_gates() {
+        xy = xy + vec2(REGISTER_TO_GATE_DELTA_X, 0.);
+        // draw_gate(&draw, gate, xy);
+        xy = xy + vec2(GATE_TO_REGISTER_DELTA_X, 0.);
+        result = gate.apply(result);
+        draw_register(&draw, &result, xy);
+        
+    }
 
     draw.to_frame(app, &frame).unwrap();
 }
