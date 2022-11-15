@@ -7,6 +7,32 @@
 - Simulate Shor's algorithm for factoring numbers.
 - Visualize quantum circuits to help explain what's going on.
 
+## Visualization
+
+- Basis View
+    - 2^n complex numbers for each input / output of each gate.
+    - Use color to indicate the argument
+    - Use height?  Arrow?  To indicate the modulus.
+    - e.g.
+        - x_0|00>
+        - x_1|01>
+        - x_2|10>
+        - x_3|11>
+
+    - e.g.
+        - 1 |00>
+        - 0 |01>
+        - 0 |10>
+        - 0 |11>
+
+    - e.g.
+        - i/sqrt(4) |00>
+        - isqrt(3/8) |01>
+        - -isqrt(1/4) |10>
+        - isqrt(1/8) |11>    
+    - Show the probabilities at the outputs
+
+
 ## Todo
 
 - `QuantumCircuit`
