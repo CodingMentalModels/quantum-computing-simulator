@@ -60,6 +60,10 @@ impl SquareMatrix {
         Self::new_unitary(DMatrix::from_vec(size, size, vec))
     }
 
+    pub fn get_coefficient(&self, row: usize, column: usize) -> Complex<f32> {
+        self.matrix[(row, column)]
+    }
+
     pub fn zero(size: usize) -> Self {
         Self::new_unitary(DMatrix::from_element(size, size, Complex::zero()))
     }

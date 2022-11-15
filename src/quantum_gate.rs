@@ -196,6 +196,10 @@ impl QuantumGate {
         Self { matrix }
     }
 
+    pub fn get_coefficient(&self, i: usize, j: usize) -> Complex<f32> {
+        self.matrix.get_coefficient(i, j)
+    }
+
     pub fn identity(n_qubits: usize) -> Self {
         assert!(n_qubits > 0);
         Self::new(SquareMatrix::one(2usize.pow(n_qubits as u32)))

@@ -9,9 +9,12 @@ const TEXT_COLOR: u32 = 0x03DAC5;
 const BASIS_DELTA_Y: f32 = 15.0;
 const COMPLEX_RECT_HEIGHT: f32 = 10.;
 const BASIS_OFFSET_X: f32 = 20.0;
+const LEGEND_DELTA_Y: f32 = 15.0;
+const LEGEND_ENTRY_DELTA_X: f32 = 100.0;
+const LEGEND_ENTRIES: usize = 8;
 const PADDING: f32 = 10.0;
-const GATE_TO_REGISTER_DELTA_X: f32 = 50.0;
-const REGISTER_TO_GATE_DELTA_X: f32 = 50.0;
+const GATE_TO_REGISTER_DELTA_X: f32 = 100.0;
+const REGISTER_TO_GATE_DELTA_X: f32 = 100.0;
 
 pub struct Model {
     window: window::Id,
@@ -23,13 +26,15 @@ pub fn model(app: &App) -> Model {
     let window = app.new_window().view(view).build().unwrap();
 
     // Instantiation
-    let mut circuit = QuantumCircuit::new(2);
-    circuit.add_gate(QuantumGate::hadamard(), vec![0]);
-    circuit.add_gate(QuantumGate::global_rotation(1, TAU/4.), vec![0]);
-    circuit.add_gate(QuantumGate::hadamard(), vec![1]);
-    circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
+    // let mut circuit = QuantumCircuit::new(2);
+    // circuit.add_gate(QuantumGate::hadamard(), vec![0]);
+    // circuit.add_gate(QuantumGate::global_rotation(1, TAU/4.), vec![0]);
+    // circuit.add_gate(QuantumGate::hadamard(), vec![1]);
+    // circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
-    let input = QuantumRegister::basis(2, 0);
+    let mut circuit = QuantumCircuit::fourier_transform(2);
+
+    let input = QuantumRegister::basis(2, 1);
     
     Model { window, circuit, input }
 }
@@ -39,6 +44,8 @@ pub fn update(_app: &App, _model: &mut Model, _update: Update) {}
 pub fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     draw.background().color(color::rgb_u32(BACKGROUND_COLOR));
+
+    draw_legend(&draw, vec2(0., app.window_rect().top()));
     
     let mut xy = Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.);
     draw_register(&draw, &model.input, xy);
@@ -46,7 +53,7 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     let mut result = model.input.clone();
     for gate in model.circuit.get_gates() {
         xy = xy + vec2(REGISTER_TO_GATE_DELTA_X, 0.);
-        // draw_gate(&draw, gate, xy);
+        draw_gate(&draw, &gate.clone(), xy);
         xy = xy + vec2(GATE_TO_REGISTER_DELTA_X, 0.);
         result = gate.apply(result);
         draw_register(&draw, &result, xy);
@@ -56,6 +63,18 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 }
 
+fn draw_legend(draw: &Draw, xy: Vec2) {
+    let start_x = xy.x - ((LEGEND_ENTRIES as f32) * LEGEND_ENTRY_DELTA_X) / 2.;
+    for i in 0..LEGEND_ENTRIES {
+        let z = Complex::exp(Complex::i() * TAU * i as f32 / LEGEND_ENTRIES as f32);
+        let legend_xy = vec2(start_x + (i as f32) * LEGEND_ENTRY_DELTA_X, xy.y - PADDING);
+        draw.text(&format!("{:.2}", z))
+            .xy(legend_xy)
+            .color(color::rgb_u32(TEXT_COLOR));
+        draw_coefficient(draw, z, legend_xy + vec2(0., -LEGEND_DELTA_Y));
+    }
+}
+
 fn draw_register(draw: &Draw, register: &QuantumRegister, xy: Vec2) {
     let x = xy.x;
     let mut y = xy.y;
@@ -63,6 +82,30 @@ fn draw_register(draw: &Draw, register: &QuantumRegister, xy: Vec2) {
         let coefficient = register.get_coefficient(i);
         draw_basis(draw, register.n_qubits(), i, coefficient, vec2(x, y));
         y -= BASIS_DELTA_Y;
+    }
+}
+
+fn draw_gate(draw: &Draw, gate: &QuantumGate, xy: Vec2) {
+    let x = xy.x;
+    let y = xy.y;
+
+    let n_bases = 2usize.pow(gate.n_qubits() as u32);
+    
+    let bounding_size = (BASIS_DELTA_Y * (n_bases as f32));
+    let bounding_xy = xy + vec2(bounding_size / 2. - COMPLEX_RECT_HEIGHT / 2., -bounding_size / 2. + COMPLEX_RECT_HEIGHT / 2.);
+    draw.rect()
+    .w_h(bounding_size + 0.5 * PADDING, bounding_size + 0.5 * PADDING)
+    .xy(bounding_xy)
+    .color(GRAY);
+    draw.rect()
+    .w_h(bounding_size, bounding_size)
+    .xy(bounding_xy)
+    .color(color::rgb_u32(BACKGROUND_COLOR));
+    for row in 0..n_bases {
+        for col in 0..n_bases {
+            let coefficient = gate.get_coefficient(row, col);
+            draw_coefficient(draw, coefficient, vec2(x + col as f32 * BASIS_DELTA_Y, y - row as f32 * BASIS_DELTA_Y));
+        }
     }
 }
 
