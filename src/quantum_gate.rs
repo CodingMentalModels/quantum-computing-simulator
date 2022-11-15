@@ -287,7 +287,7 @@ impl QuantumGate {
                 Complex::zero(), // 30
                 Complex::zero(),
                 Complex::zero(),
-                Complex::exp(phase * Complex::i()),
+                Complex::exp(phase * Complex::i()), // 33
             ]
         ))
     }
@@ -342,7 +342,7 @@ mod test_quantum_gate {
         assert_eq!(singleton.get_coefficient(0), Complex::zero());
         assert_eq!(singleton.get_coefficient(1), Complex::one());
 
-        let singleton = QuantumRegister::singleton(Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.));
+        let singleton = QuantumRegister::singleton(Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.0_f32.sqrt()));
         assert_eq!(singleton.n_qubits(), 1);
         assert_eq!(singleton.len(), 2);
         assert_eq!(singleton.get_coefficient(0), Complex::one() * 0.5);
@@ -541,7 +541,7 @@ mod test_quantum_gate {
         let basis_0 = Qubit::basis_0();
         let basis_1 = Qubit::basis_1();
 
-        let mixed_state = Qubit::mix(basis_0, basis_1, 1., 3.);
+        let mixed_state = Qubit::mix(basis_0, basis_1, 1.0_f32.sqrt(), 3.0_f32.sqrt());
         let result = gate.apply(QuantumRegister::singleton(mixed_state));
 
         assert!(result.almost_equals(QuantumRegister::singleton(mixed_state)), "{:?} != {:?}", result, QuantumRegister::singleton(mixed_state));
@@ -550,12 +550,12 @@ mod test_quantum_gate {
 
         assert!(
             hadamard_gate.apply(QuantumRegister::singleton(basis_0)).almost_equals(
-                QuantumRegister::singleton(Qubit::new_normalize(Vector2::new(Complex::one() * 0.5_f32.sqrt(), Complex::one() * 0.5_f32.sqrt())))
+                QuantumRegister::singleton(Qubit::new_normalize(Vector2::new(Complex::one(), Complex::one())))
             )
         );
         assert!(
             hadamard_gate.apply(QuantumRegister::singleton(basis_1)).almost_equals(
-                QuantumRegister::singleton(Qubit::new_normalize(Vector2::new(Complex::one() * 0.5_f32.sqrt(), -Complex::one() * 0.5_f32.sqrt())))
+                QuantumRegister::singleton(Qubit::new_normalize(Vector2::new(Complex::one(), -Complex::one())))
             )
         );
 
@@ -564,7 +564,7 @@ mod test_quantum_gate {
             result.almost_equals(
                 QuantumRegister::singleton(Qubit::new_normalize(Vector2::new(Complex::one() * (0.25_f32.sqrt() + 0.75_f32.sqrt()), Complex::one() * (0.25_f32.sqrt() - 0.75_f32.sqrt()))))
             ),
-            "{:?}",
+            "{}",
             result,
         );
 

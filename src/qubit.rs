@@ -38,8 +38,8 @@ impl Qubit {
     }
 
     pub fn mix(lhs: Self, rhs: Self, lhs_weight: impl Into<Complex<f32>> + Copy, rhs_weight: impl Into<Complex<f32>> + Copy) -> Self {
-        let lhs_coefficient = (lhs_weight.into() / (lhs_weight.into() + rhs_weight.into())).sqrt();
-        let rhs_coefficient = (rhs_weight.into() / (lhs_weight.into() + rhs_weight.into())).sqrt();
+        let lhs_coefficient = lhs_weight.into();
+        let rhs_coefficient = rhs_weight.into();
         Self::new_normalize(lhs.state.into_inner().mul(lhs_coefficient) + rhs.state.into_inner().mul(rhs_coefficient))
     }
 
@@ -80,7 +80,7 @@ mod test_qubit {
     #[test]
     fn test_qubit_mixes() {
 
-        let mixed_state = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.);
+        let mixed_state = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.0_f32.sqrt());
 
         assert!(mixed_state.almost_equals(&Qubit::new(UnitVector2::new_normalize(Vector2::new(Complex::one() * 0.25_f32.sqrt(), Complex::one() * 0.75_f32.sqrt())))));
         
@@ -97,7 +97,7 @@ mod test_qubit {
         assert_eq!(basis_1_measurement, 1);
         assert_eq!(new_basis_1_qubit, Qubit::basis_1());
 
-        let mixed_state = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.);
+        let mixed_state = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 3.0_f32.sqrt());
 
         let (mixed_state_measurement, new_mixed_state_qubit) = mixed_state.measure();
 
