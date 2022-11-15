@@ -519,6 +519,21 @@ mod test_quantum_circuit {
     }
 
     #[test]
+    fn test_fourier_transform_trivial() {
+        
+        let ft = QuantumCircuit::fourier_transform(1);
+
+        let input = QuantumRegister::from_int(1, 0);
+        let expected = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., 1.);
+        assert!(ft.clone().run(input).almost_equals(expected));
+
+        let input = QuantumRegister::from_int(1, 1);
+
+        let expected = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., -1.);
+        assert!(ft.clone().run(input).almost_equals(QuantumGate::hadamard().apply(expected)));
+    }
+
+    #[test]
     fn test_fourier_transform() {
 
         let x_0 = QuantumRegister::singleton(Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., Complex::exp(TAU * 3./4. * Complex::i())));
@@ -552,6 +567,7 @@ mod test_quantum_circuit {
     #[test]
     fn test_inverse_fourier_transform_simple() {
         let ift = QuantumCircuit::inverse_fourier_transform(2);
+        println!("{}", ift);
         let m = 2usize.pow(2);
 
         let actual_0 = ift.run(QuantumRegister::from_int(2, 0));
@@ -563,8 +579,8 @@ mod test_quantum_circuit {
             vec![
                 QuantumRegister::basis(2, 0),
                 QuantumRegister::basis(2, 1).rotate(-TAU/4.),
-                QuantumRegister::basis(2, 1).rotate(-TAU/2.),
-                QuantumRegister::basis(2, 1).rotate(-3.*TAU/4.),
+                QuantumRegister::basis(2, 2).rotate(-2.*TAU/4.),
+                QuantumRegister::basis(2, 3).rotate(-3.*TAU/4.),
                 ]
         );
         assert!(actual_1.clone().almost_equals(expected_1.clone()), "\n\n{}\n\n vs. \n\n{}", actual_1.clone(), expected_1.clone());
