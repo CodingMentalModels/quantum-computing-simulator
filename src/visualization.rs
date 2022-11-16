@@ -13,8 +13,8 @@ const LEGEND_DELTA_Y: f32 = 15.0;
 const LEGEND_ENTRY_DELTA_X: f32 = 100.0;
 const LEGEND_ENTRIES: usize = 8;
 const PADDING: f32 = 10.0;
-const GATE_TO_REGISTER_DELTA_X: f32 = 100.0;
-const REGISTER_TO_GATE_DELTA_X: f32 = 100.0;
+const GATE_TO_REGISTER_DELTA_X_PER_BASIS: f32 = 20.;
+const REGISTER_TO_GATE_DELTA_X: f32 = 65.;
 
 pub struct Model {
     window: window::Id,
@@ -32,9 +32,9 @@ pub fn model(app: &App) -> Model {
     // circuit.add_gate(QuantumGate::hadamard(), vec![1]);
     // circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
-    let mut circuit = QuantumCircuit::fourier_transform(2);
+    let mut circuit = QuantumCircuit::fourier_transform(3);
 
-    let input = QuantumRegister::basis(2, 1);
+    let input = QuantumRegister::basis(3, 1);
     
     Model { window, circuit, input }
 }
@@ -54,7 +54,7 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     for gate in model.circuit.get_gates() {
         xy = xy + vec2(REGISTER_TO_GATE_DELTA_X, 0.);
         draw_gate(&draw, &gate.clone(), xy);
-        xy = xy + vec2(GATE_TO_REGISTER_DELTA_X, 0.);
+        xy = xy + vec2(GATE_TO_REGISTER_DELTA_X_PER_BASIS * (2usize.pow(gate.n_qubits() as u32) as f32), 0.);
         result = gate.apply(result);
         draw_register(&draw, &result, xy);
         

@@ -109,10 +109,22 @@ impl QuantumCircuit {
     fn partial_fourier_transform(n_qubits: usize, start_idx: usize) -> Self {
         let mut circuit = Self::new(n_qubits);
         circuit.add_gate(QuantumGate::hadamard(), vec![start_idx]);
-        for i in (start_idx + 1)..(n_qubits - start_idx) {
-            let k = 2usize.pow((i + 1 - start_idx) as u32);
+
+        // n_qubits = 1
+        // 1..1
+        // n_qubits = 2
+        // 1..2
+        // 2..2
+        // n_qubits = 3
+        // 1..3
+        // 2..3
+        // 3..3
+
+
+        for i in (start_idx + 1)..n_qubits {
+            let k = 2usize.pow((i + 1) as u32);
             let phase_shift_gate = QuantumGate::controlled_phase_shift(TAU / (k as f32));
-            circuit.add_gate(phase_shift_gate, vec![start_idx + i, start_idx]);
+            circuit.add_gate(phase_shift_gate, vec![i, start_idx]);
         }
         return circuit;
     }
