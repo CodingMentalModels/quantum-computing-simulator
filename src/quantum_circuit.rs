@@ -110,17 +110,6 @@ impl QuantumCircuit {
         let mut circuit = Self::new(n_qubits);
         circuit.add_gate(QuantumGate::hadamard(), vec![start_idx]);
 
-        // n_qubits = 1
-        // 1..1
-        // n_qubits = 2
-        // 1..2
-        // 2..2
-        // n_qubits = 3
-        // 1..3
-        // 2..3
-        // 3..3
-
-
         for i in (start_idx + 1)..n_qubits {
             let k = 2usize.pow((i + 1) as u32);
             let phase_shift_gate = QuantumGate::controlled_phase_shift(TAU / (k as f32));
