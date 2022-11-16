@@ -68,7 +68,7 @@ fn draw_legend(draw: &Draw, xy: Vec2) {
     for i in 0..LEGEND_ENTRIES {
         let z = Complex::exp(Complex::i() * TAU * i as f32 / LEGEND_ENTRIES as f32);
         let legend_xy = vec2(start_x + (i as f32) * LEGEND_ENTRY_DELTA_X, xy.y - PADDING);
-        draw.text(&format!("{:.2}", z))
+        draw.text(&pretty_print_complex(z))
             .xy(legend_xy)
             .color(color::rgb_u32(TEXT_COLOR));
         draw_coefficient(draw, z, legend_xy + vec2(0., -LEGEND_DELTA_Y));
@@ -147,6 +147,48 @@ fn to_binary_string(n_qubits: usize, index: usize) -> String {
     binary_string
 }
 
+fn pretty_print_complex(z: Complex<f32>) -> String {
+    if z.abs() < 0.0001 {
+        return "0".to_string();
+    }
+
+    let mut real_result = String::new();
+    if z.re.abs() > 0.0001 {
+        real_result = pretty_print_real_number(z.re);
+    }
+
+    let mut imaginary_result = String::new();
+    if z.im.abs() > 0.0001 {
+        if (z.im.abs() - 1.0).abs() < 0.0001 {
+            imaginary_result = "i".to_string();
+        } else {
+            imaginary_result = format!("{}i", pretty_print_real_number(z.im.abs()));
+        }
+    }
+
+    let result = if real_result == "" {
+        if z.im < 0.0 {
+            format!("-{}", imaginary_result)
+        } else {
+            imaginary_result
+        }
+    } else if imaginary_result == "" {
+        real_result
+    } else {
+        if z.im < 0.0 {
+            format!("{} - {}", real_result, imaginary_result)
+        } else {
+            format!("{} + {}", real_result, imaginary_result)
+        }
+    };
+    return result;
+}
+
+fn pretty_print_real_number(x: f32) -> String {
+    let x = (x * 1000.).round() / 1000.;
+    return format!("{}", x);
+}
+
 
 #[cfg(test)]
 mod test_visualization {
@@ -161,5 +203,20 @@ mod test_visualization {
         assert_eq!(to_binary_string(2, 1), "01");
         assert_eq!(to_binary_string(2, 2), "10");
         assert_eq!(to_binary_string(2, 3), "11");
+    }
+
+    #[test]
+    fn test_pretty_print_complex() {
+
+        assert_eq!(pretty_print_complex(Complex::new(0., 0.)), "0");
+        assert_eq!(pretty_print_complex(Complex::new(1., 0.)), "1");
+        assert_eq!(pretty_print_complex(Complex::new(0., 1.)), "i");
+        assert_eq!(pretty_print_complex(Complex::new(0., -1.)), "-i");
+        assert_eq!(pretty_print_complex(Complex::new(1., 1.)), "1 + i");
+        assert_eq!(pretty_print_complex(Complex::new(1., -1.)), "1 - i");
+        assert_eq!(pretty_print_complex(Complex::new(-1.2, 1.)), "-1.2 + i");
+        assert_eq!(pretty_print_complex(Complex::new(-1.2, -3.4)), "-1.2 - 3.4i");
+        assert_eq!(pretty_print_complex(Complex::exp(Complex::i()/8.*TAU)), "0.707 + 0.707i");
+        
     }
 }

@@ -98,11 +98,11 @@ impl QuantumCircuit {
 
     pub fn fourier_transform(n_qubits: usize) -> Self {
         let mut to_return = Self::new(n_qubits);
+        to_return.add_gate(QuantumGate::permutation((0..n_qubits).rev().collect()), (0..n_qubits).collect());
         for i in 0..n_qubits {
             let partial = Self::partial_fourier_transform(n_qubits, i);
             to_return.extend(&partial);
         }
-        to_return.add_gate(QuantumGate::permutation((0..n_qubits).rev().collect()), (0..n_qubits).collect());
         return to_return;
     }
 
