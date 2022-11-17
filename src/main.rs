@@ -4,6 +4,7 @@ mod matrix;
 mod qubit;
 mod quantum_gate;
 mod quantum_circuit;
+mod quantum_algorithm;
 mod visualization;
 
 use nannou::prelude::*;

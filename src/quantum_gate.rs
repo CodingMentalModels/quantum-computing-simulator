@@ -568,6 +568,17 @@ mod test_quantum_gate {
     }
 
     #[test]
+    fn test_identity_gate() {
+        let gate = QuantumGate::identity(6);
+        assert_eq!(gate.n_qubits(), 6);
+        assert!(gate.apply(QuantumRegister::basis(6, 0)).almost_equals(QuantumRegister::basis(6, 0)));
+        assert!(gate.apply(QuantumRegister::basis(6, 1)).almost_equals(QuantumRegister::basis(6, 1)));
+        assert!(gate.apply(QuantumRegister::basis(6, 2)).almost_equals(QuantumRegister::basis(6, 2)));
+        assert!(gate.apply(QuantumRegister::basis(6, 3)).almost_equals(QuantumRegister::basis(6, 3)));
+        assert!(gate.apply(QuantumRegister::basis(6, 4)).almost_equals(QuantumRegister::basis(6, 4)));
+    }
+
+    #[test]
     fn test_cnot_gate() {
         
         let cnot = QuantumGate::cnot();

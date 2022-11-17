@@ -35,9 +35,9 @@ pub fn model(app: &App) -> Model {
     // circuit.add_gate(QuantumGate::hadamard(), vec![1]);
     // circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
-    let mut circuit = QuantumCircuit::fourier_transform(3);
+    let mut circuit = QuantumCircuit::fourier_transform(4);
 
-    let input = QuantumRegister::basis(3, 1);
+    let input = QuantumRegister::basis(4, 1);
     
     Model { window, circuit, input, drawer: ZoomedDrawer::new(app.draw()) }
 }
