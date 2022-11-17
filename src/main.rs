@@ -4,8 +4,11 @@ mod matrix;
 mod qubit;
 mod quantum_gate;
 mod quantum_circuit;
+mod visualization;
 
+use nannou::prelude::*;
+use crate::visualization::{Model, model, update, view};
 
 fn main() {
-    println!("Hello, world!");
+    nannou::app(model).update(update).run();
 }

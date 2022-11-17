@@ -1,11 +1,23 @@
-use std::ops::Mul;
+use std::{ops::Mul, fmt::{Debug, Display, Formatter}};
 
 use nalgebra::{UnitVector2, Complex, Vector2, DMatrix, Unit, Scalar, ComplexField, RealField, DVector, Normed};
-use num_traits::One;
+use num_traits::{One, Zero};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SquareMatrix {
     matrix: DMatrix<Complex<f32>>,
+}
+
+impl Display for SquareMatrix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.matrix)
+    }
+}
+
+impl Debug for SquareMatrix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.matrix)
+    }
 }
 
 impl PartialEq for SquareMatrix {
@@ -47,6 +59,14 @@ impl SquareMatrix {
     pub fn from_vec_normalize(size: usize, vec: Vec<Complex<f32>>) -> Self {
         Self::new_unitary(DMatrix::from_vec(size, size, vec))
     }
+
+    pub fn get_coefficient(&self, row: usize, column: usize) -> Complex<f32> {
+        self.matrix[(row, column)]
+    }
+
+    pub fn zero(size: usize) -> Self {
+        Self::new_unitary(DMatrix::from_element(size, size, Complex::zero()))
+    }
     
     pub fn identity(size: usize) -> Self {
         Self::new_unitary(DMatrix::identity(size, size))
@@ -54,6 +74,19 @@ impl SquareMatrix {
 
     pub fn one(size: usize) -> Self {
         Self::identity(size)
+    }
+
+    pub fn permutation(permutation: Vec<usize>) -> Self {
+        assert!(permutation.len() > 0);
+        assert!(permutation.iter().zip(permutation.iter().skip(1)).all(|(a, b)| a != b));
+
+        let size = permutation.len();
+
+        let mut matrix = DMatrix::from_element(size, size, Complex::zero());
+        for (i, j) in permutation.iter().enumerate() {
+            matrix[(i, *j)] = Complex::one();
+        }
+        Self::new_unitary(matrix)
     }
 
     pub fn almost_equals(&self, rhs: &Self) -> bool {
@@ -79,6 +112,15 @@ impl SquareMatrix {
 
     pub fn invert(&self) -> Self {
         Self::new_unitary(self.matrix.clone().try_inverse().expect("All unitary square matrices are invertible"))
+    }
+
+    pub fn swap_columns(&self, i: usize, j: usize) -> Self {
+        assert!(i < self.size());
+        assert!(j < self.size());
+
+        let mut new_matrix = self.matrix.clone();
+        new_matrix.swap_columns(i, j);
+        Self::new_unitary(new_matrix)
     }
 
     fn is_unitary(&self) -> bool {
@@ -208,5 +250,43 @@ mod test_nalgebra {
 
         assert!(result.clone().almost_equals(&(expected.clone())), "{:?} * {:?} = {:?}", id, m.clone(), result.clone());
         
+    }
+
+    #[test]
+    fn test_swaps_columns() {
+        
+        let matrix = SquareMatrix::new_unitary(
+            DMatrix::from_vec(
+                2,
+                2,
+                vec![
+                    Complex::from(1.0_f32),
+                    Complex::from(3.0_f32),
+                    Complex::from(2.0_f32),
+                    Complex::from(4.0_f32),
+                ]
+            )
+        );
+
+        assert!(matrix.clone().swap_columns(0, 1).almost_equals(
+            &SquareMatrix::new_unitary(
+                DMatrix::from_vec(
+                    2,
+                    2,
+                    vec![
+                        Complex::from(2.0_f32),
+                        Complex::from(4.0_f32),
+                        Complex::from(1.0_f32),
+                        Complex::from(3.0_f32),
+                    ]
+                )
+            )
+        ),
+        "{}",
+        matrix.swap_columns(0, 1)
+    );
+
+
+
     }
 }
