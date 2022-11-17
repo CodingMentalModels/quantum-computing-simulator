@@ -508,30 +508,6 @@ mod test_quantum_gate {
     }
 
     #[test]
-    fn test_tensor_product_expression_for_phase_rotation_problem() {
-        
-        let omega = 5./8.;
-        let x_0 = 1.;
-        let x_1 = 0.;
-        let x_2 = 1.;
-
-        let term_0 = 5./8.; // .101
-        let term_1 = 3./8.; // .011
-        let term_2 = 5./8.; // .101
-
-        let lhs: QuantumRegister = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., Complex::exp(TAU * omega * Complex::i())).into();
-
-        let rhs_0: QuantumRegister = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., Complex::exp(TAU * term_0 * Complex::i())).into();
-        let rhs_1: QuantumRegister = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., Complex::exp(TAU * term_1 * Complex::i())).into();
-        let rhs_2: QuantumRegister = Qubit::mix(Qubit::basis_0(), Qubit::basis_1(), 1., Complex::exp(TAU * term_2 * Complex::i())).into();
-
-        let rhs = rhs_0.tensor_product(&rhs_1).tensor_product(&rhs_2);
-
-        assert!(lhs.clone().almost_equals(rhs.clone()), "lhs:\n{}\n\nrhs:\n{}", lhs, rhs);
-
-    }
-
-    #[test]
     fn test_quantum_gate_initializes() {
         
         let gate = QuantumGate::new(
