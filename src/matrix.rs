@@ -44,6 +44,10 @@ impl Mul<Unit<DVector<Complex<f32>>>> for SquareMatrix {
 }
 
 impl SquareMatrix {
+
+    pub fn new_unchecked(matrix: DMatrix<Complex<f32>>) -> Self {
+        Self { matrix }
+    }
     
     pub fn new_unitary(matrix: DMatrix<Complex<f32>>) -> Self {
         // Determinants are homogenous, meaning that:
@@ -64,13 +68,9 @@ impl SquareMatrix {
     pub fn get_coefficient(&self, row: usize, column: usize) -> Complex<f32> {
         self.matrix[(row, column)]
     }
-
-    pub fn zero(size: usize) -> Self {
-        Self::new_unitary(DMatrix::from_element(size, size, Complex::zero()))
-    }
     
     pub fn identity(size: usize) -> Self {
-        Self::new_unitary(DMatrix::identity(size, size))
+        Self::new_unchecked(DMatrix::identity(size, size))
     }
 
     pub fn one(size: usize) -> Self {
@@ -87,7 +87,7 @@ impl SquareMatrix {
         for (i, j) in permutation.iter().enumerate() {
             matrix[(i, *j)] = Complex::one();
         }
-        Self::new_unitary(matrix)
+        Self::new_unchecked(matrix)
     }
 
     pub fn almost_equals(&self, rhs: &Self) -> bool {
@@ -108,11 +108,11 @@ impl SquareMatrix {
     }
     
     pub fn tensor_product(&self, rhs: &Self) -> Self {
-        Self::new_unitary(self.matrix.kronecker(&rhs.matrix.clone()))
+        Self::new_unchecked(self.matrix.kronecker(&rhs.matrix.clone()))
     }
 
     pub fn invert(&self) -> Self {
-        Self::new_unitary(self.matrix.clone().try_inverse().expect("All unitary square matrices are invertible"))
+        Self::new_unchecked(self.matrix.clone().try_inverse().expect("All unitary square matrices are invertible"))
     }
 
     pub fn swap_columns(&self, i: usize, j: usize) -> Self {
@@ -134,6 +134,18 @@ impl SquareMatrix {
 mod test_nalgebra {
 
     use super::*;
+
+    #[test]
+    fn test_square_matrix_identity() {
+        
+        let matrix = SquareMatrix::identity(2usize.pow(10));
+        assert_eq!(matrix.size(), 2usize.pow(10));
+
+        let v = Unit::<DVector<Complex<f32>>>::new_normalize(DVector::from_element(2usize.pow(10), Complex::one()));
+        assert!(Unit::<DVector<_>>::new_normalize(matrix * v.clone()) == v.clone());
+
+    }
+
 
     #[test]
     fn test_cnot_matrix_is_already_unitary() {
