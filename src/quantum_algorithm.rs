@@ -39,7 +39,7 @@ mod test_quantum_algorithm {
     #[test]
     fn test_order_finding_algorithm() {
         
-        let mut algorithm = OrderFindingAlgorithm::new(6);
+        let mut algorithm = OrderFindingAlgorithm::new(15);
         let result = algorithm.run();
         assert_eq!(result, 3);
 

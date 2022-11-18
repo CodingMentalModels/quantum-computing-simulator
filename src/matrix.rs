@@ -31,7 +31,7 @@ impl Mul<SquareMatrix> for SquareMatrix {
     type Output = SquareMatrix;
     
     fn mul(self, rhs: SquareMatrix) -> Self::Output {
-        SquareMatrix::new_unitary(self.matrix * rhs.matrix)
+        SquareMatrix::new_unchecked(self.matrix * rhs.matrix)
     }
 }
 

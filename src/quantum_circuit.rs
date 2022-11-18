@@ -47,8 +47,8 @@ impl QuantumCircuit {
             }
         }
         
-        let input_qubits_to_first_n = QuantumGate::permutation(completed_qubits);
-        let first_n_to_input_qubits = input_qubits_to_first_n.reverse();
+        let input_qubits_to_first_n = QuantumGate::permutation(&completed_qubits);
+        let first_n_to_input_qubits = QuantumGate::reverse_permutation(&completed_qubits);
         let gate_to_add = if input_qubits.len() == self.n_qubits {
             gate
         } else {
@@ -108,7 +108,7 @@ impl QuantumCircuit {
 
     pub fn fourier_transform(n_qubits: usize) -> Self {
         let mut to_return = Self::new(n_qubits);
-        to_return.add_gate(QuantumGate::permutation((0..n_qubits).rev().collect()), (0..n_qubits).collect());
+        to_return.add_gate(QuantumGate::permutation(&(0..n_qubits).rev().collect()), (0..n_qubits).collect());
         for i in 0..n_qubits {
             let partial = Self::partial_fourier_transform(n_qubits, i);
             to_return.extend(&partial);
