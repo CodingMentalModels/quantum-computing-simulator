@@ -1,6 +1,6 @@
 use crate::qubit::Qubit;
 use crate::quantum_gate::QuantumGate;
-use crate::quantum_gate::QuantumRegister;
+use crate::quantum_register::QuantumRegister;
 
 use std::f32::consts::{TAU, SQRT_2};
 use std::fmt::Display;

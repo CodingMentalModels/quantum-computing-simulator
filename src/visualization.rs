@@ -1,7 +1,8 @@
 use nalgebra::{Complex, ComplexField};
 use nannou::{prelude::*, color::{self, IntoLinSrgba}, draw::properties::ColorScalar, text::{Text, FontSize, layout::DEFAULT_FONT_SIZE}};
 
-use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate, QuantumRegister}};
+use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate}};
+use crate::quantum_register::QuantumRegister;
 
 const BACKGROUND_COLOR: u32 = 0x121212;
 const TEXT_COLOR: u32 = 0x03DAC5;

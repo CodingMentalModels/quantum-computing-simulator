@@ -1,4 +1,5 @@
-use crate::{quantum_circuit::QuantumCircuit, quantum_gate::QuantumRegister};
+use crate::{quantum_circuit::QuantumCircuit};
+use crate::quantum_register::QuantumRegister;
 
 
 
