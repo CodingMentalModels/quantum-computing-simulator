@@ -47,8 +47,8 @@ impl QuantumCircuit {
             }
         }
         
-        let input_qubits_to_first_n = QuantumGate::permutation(completed_qubits);
-        let first_n_to_input_qubits = input_qubits_to_first_n.reverse();
+        let input_qubits_to_first_n = QuantumGate::permutation(&completed_qubits);
+        let first_n_to_input_qubits = QuantumGate::reverse_permutation(&completed_qubits);
         let gate_to_add = if input_qubits.len() == self.n_qubits {
             gate
         } else {
@@ -63,6 +63,12 @@ impl QuantumCircuit {
 
     }
 
+    pub fn singleton(gate: QuantumGate) -> Self {
+        let mut circuit = Self::new(gate.n_qubits());
+        circuit.add_gate(gate.clone(), (0..gate.n_qubits()).collect());
+        return circuit;
+    }
+
     pub fn run(&self, register: impl Into<QuantumRegister>) -> QuantumRegister {
         let inner_register = register.into();
         assert_eq!(self.n_qubits, inner_register.n_qubits());
@@ -71,6 +77,10 @@ impl QuantumCircuit {
             intermediate_register = gate.apply(intermediate_register);
         }
         return intermediate_register;
+    }
+
+    pub fn n_qubits(&self) -> usize {
+        self.n_qubits
     }
 
     pub fn get_gates(&self) -> Vec<QuantumGate> {
@@ -98,7 +108,7 @@ impl QuantumCircuit {
 
     pub fn fourier_transform(n_qubits: usize) -> Self {
         let mut to_return = Self::new(n_qubits);
-        to_return.add_gate(QuantumGate::permutation((0..n_qubits).rev().collect()), (0..n_qubits).collect());
+        to_return.add_gate(QuantumGate::permutation(&(0..n_qubits).rev().collect()), (0..n_qubits).collect());
         for i in 0..n_qubits {
             let partial = Self::partial_fourier_transform(n_qubits, i);
             to_return.extend(&partial);
@@ -122,6 +132,22 @@ impl QuantumCircuit {
     
     pub fn inverse_fourier_transform(n_qubits: usize) -> Self {
         Self::fourier_transform(n_qubits).reverse()
+    }
+
+    pub fn order_finding(n_qubits: usize) -> Self {
+        let control_qft = QuantumCircuit::fourier_transform(n_qubits).as_gate();
+
+        // STUB!!!!
+        let periodic_function = QuantumGate::identity(2*n_qubits);
+        
+        let control_ift = QuantumCircuit::inverse_fourier_transform(n_qubits).as_gate();
+
+        let mut circuit = QuantumCircuit::new(2*n_qubits);
+        circuit.add_gate(control_qft, (0..n_qubits).collect());
+        circuit.add_gate(periodic_function, (0..2*n_qubits).collect());
+        circuit.add_gate(control_ift, (0..n_qubits).collect());
+
+        return circuit;
     }
 
 }

@@ -166,6 +166,16 @@ impl QuantumRegister {
         panic!("The measurement vector is unitary and so probability_so_far should count up to 1.0 > random_number");
     }
 
+    pub fn partially_measure(&self, qubits: Vec<usize>) -> (Measurement, Self) {
+        let (measurement, new_register) = self.measure();
+        let mut to_return = 0;
+        for i in qubits {
+            to_return += ((measurement >> i) & 1) << i;
+        }
+
+        return (to_return as u8, new_register);
+    }
+
     pub fn rotate(&self, phase: f32) -> Self {
         let new_register = self.register.clone().into_inner() * Complex::exp(phase * Complex::i());
         return Self::new_normalize(new_register);
@@ -210,7 +220,7 @@ impl QuantumGate {
         Self { matrix: SquareMatrix::identity(2usize.pow(n_qubits as u32)).scale(Complex::exp(phase * Complex::i())) }
     }
 
-    pub fn permutation(qubit_permutation: Vec<usize>) -> Self {
+    pub fn permutation(qubit_permutation: &Vec<usize>) -> Self {
         assert!(qubit_permutation.len() > 0);
         let basis_size = 2usize.pow(qubit_permutation.len() as u32);
         let mut permutation = Vec::new();
@@ -226,6 +236,14 @@ impl QuantumGate {
             permutation.push(new_i);
         }
         Self::new(SquareMatrix::permutation(permutation))
+    }
+
+    pub fn reverse_permutation(reverse_qubit_permutation: &Vec<usize>) -> Self {
+        let mut qubit_permutation = vec![0; reverse_qubit_permutation.len()];
+        for (i, &j) in reverse_qubit_permutation.iter().enumerate() {
+            qubit_permutation[j] = i;
+        }
+        Self::permutation(&qubit_permutation)
     }
 
     pub fn tensor_product(&self, rhs: Self) -> Self {
@@ -335,6 +353,8 @@ impl QuantumGate {
 #[cfg(test)]
 mod test_quantum_gate {
 
+    use std::iter;
+
     use super::*;
 
     #[test]
@@ -409,6 +429,21 @@ mod test_quantum_gate {
         assert_eq!(measurement, 4);
         assert!(after_measurement.almost_equals(register));
         
+    }
+
+    #[test]
+    fn test_quantum_register_partially_measures() {
+        
+        let bases = QuantumRegister::all_bases(4);
+
+        let measured: Vec<u8> = bases.clone().into_iter().map(|x| x.partially_measure(vec![0])).map(|(m, r)| m).collect();
+        assert_eq!(measured, iter::repeat(vec![0, 1]).take(8).into_iter().flatten().collect::<Vec<_>>());
+        
+        let measured: Vec<u8> = bases.clone().into_iter().map(|x| x.partially_measure(vec![2])).map(|(m, r)| m).collect();
+        assert_eq!(measured, vec![0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 4]);
+
+        let measured: Vec<u8> = bases.clone().into_iter().map(|x| x.partially_measure(vec![1, 3])).map(|(m, r)| m).collect();
+        assert_eq!(measured, vec![0, 0, 2, 2, 0, 0, 2, 2, 8, 8, 10, 10, 8, 8, 10, 10]);
     }
 
     #[test]
@@ -568,6 +603,17 @@ mod test_quantum_gate {
     }
 
     #[test]
+    fn test_identity_gate() {
+        let gate = QuantumGate::identity(10);
+        assert_eq!(gate.n_qubits(), 10);
+        assert!(gate.apply(QuantumRegister::basis(10, 0)).almost_equals(QuantumRegister::basis(10, 0)));
+        assert!(gate.apply(QuantumRegister::basis(10, 1)).almost_equals(QuantumRegister::basis(10, 1)));
+        assert!(gate.apply(QuantumRegister::basis(10, 2)).almost_equals(QuantumRegister::basis(10, 2)));
+        assert!(gate.apply(QuantumRegister::basis(10, 3)).almost_equals(QuantumRegister::basis(10, 3)));
+        assert!(gate.apply(QuantumRegister::basis(10, 4)).almost_equals(QuantumRegister::basis(10, 4)));
+    }
+
+    #[test]
     fn test_cnot_gate() {
         
         let cnot = QuantumGate::cnot();
@@ -616,7 +662,7 @@ mod test_quantum_gate {
             cphase
         );
 
-        let swap_gate = QuantumGate::permutation(vec![1, 0]);
+        let swap_gate = QuantumGate::permutation(&vec![1, 0]);
         let reversed_cphase = swap_gate.compose(
             &QuantumGate::controlled_phase_shift(TAU / 2.)
                 .compose(&swap_gate));
@@ -648,16 +694,16 @@ mod test_quantum_gate {
 
     #[test]
     fn test_permutation_matrix() {
-        assert!(QuantumGate::permutation(vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
-        assert_eq!(QuantumGate::permutation(vec![0, 1, 2]).n_qubits(), 3);
+        assert!(QuantumGate::permutation(&vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
+        assert_eq!(QuantumGate::permutation(&vec![0, 1, 2]).n_qubits(), 3);
         assert_eq!(QuantumGate::identity(3).n_qubits(), 3);
-        assert!(QuantumGate::permutation(vec![0, 1, 2]).almost_equals(&QuantumGate::identity(3)));
+        assert!(QuantumGate::permutation(&vec![0, 1, 2]).almost_equals(&QuantumGate::identity(3)));
 
         // |00> -> |00>
         // |01> -> |10>
         // |10> -> |01>
         // |11> -> |11>
-        assert!(QuantumGate::permutation(vec![1, 0]).almost_equals(
+        assert!(QuantumGate::permutation(&vec![1, 0]).almost_equals(
             &QuantumGate::new(
                 SquareMatrix::from_vec_normalize(4, vec![
                     Complex::one(), Complex::zero(), Complex::zero(), Complex::zero(),
@@ -669,7 +715,7 @@ mod test_quantum_gate {
         ));
 
         
-        let rotation = QuantumGate::permutation(vec![2, 0, 1]);
+        let rotation = QuantumGate::permutation(&vec![2, 0, 1]);
         // |000> -> |000>
         // |001> -> |010>
         // |010> -> |100>
@@ -688,6 +734,30 @@ mod test_quantum_gate {
         assert!(rotation.apply(QuantumRegister::basis(3, 6)).almost_equals(QuantumRegister::basis(3, 5)));
         assert!(rotation.apply(QuantumRegister::basis(3, 7)).almost_equals(QuantumRegister::basis(3, 7)));
         
+    }
+
+    #[test]
+    fn test_reverse_permutation_matrix_is_inverse_of_permutation_matrix() {
+        
+        let permutation = vec![3, 1, 2, 0];
+
+        let expected = QuantumGate::permutation(&permutation).reverse();
+
+        assert!(QuantumGate::reverse_permutation(&permutation).almost_equals(&expected));
+    }
+
+    #[test]
+    fn test_quantum_gates_compose() {
+        
+        let n_qubits = 12;
+        let permutation = (0..n_qubits).collect();
+        let permutation_gate = QuantumGate::permutation(&permutation);
+        let reverse_permutation_gate = QuantumGate::reverse_permutation(&permutation);
+        let actual = permutation_gate.clone().compose(&reverse_permutation_gate.clone());
+
+        let identity = QuantumGate::identity(n_qubits);
+        assert!(actual.almost_equals(&identity));
+
     }
 
     #[test]
