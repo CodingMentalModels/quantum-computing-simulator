@@ -142,7 +142,7 @@ mod test_nalgebra {
         assert_eq!(matrix.size(), 2usize.pow(5));
 
         let v = Unit::<DVector<Complex<f32>>>::new_normalize(DVector::from_element(2usize.pow(5), Complex::one()));
-        assert!(Unit::<DVector<_>>::new_normalize(matrix * v.clone()) == v.clone());
+        assert!(Unit::<DVector<_>>::new_normalize(matrix * v.clone()).norm() - v.clone().norm() < 0.0001);
 
     }
 
