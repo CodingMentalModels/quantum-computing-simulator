@@ -392,7 +392,7 @@ mod test_quantum_gate {
     #[test]
     fn test_quantum_gates_compose() {
         
-        let n_qubits = 12;
+        let n_qubits = 3;
         let permutation = (0..n_qubits).collect();
         let permutation_gate = QuantumGate::permutation(&permutation);
         let reverse_permutation_gate = QuantumGate::reverse_permutation(&permutation);
@@ -446,7 +446,6 @@ mod test_quantum_gate {
         assert_eq!(measurement, 0);
         assert!(after_measurement.almost_equals(Qubit::basis_0()));
         
-
     }
 
 }

@@ -3,10 +3,12 @@ use crate::quantum_gate::QuantumGate;
 use crate::quantum_register::QuantumRegister;
 
 use std::f32::consts::{TAU, SQRT_2};
-use std::fmt::Display;
-use std::fmt::Formatter;
+use std::fmt::{Display, Debug, Formatter};
 
+use itertools::Itertools;
 use nalgebra::{Complex, ComplexField};
+
+type QuantumGateWithinputs = (QuantumGate, Vec<usize>);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct QuantumCircuit {
@@ -148,6 +150,86 @@ impl QuantumCircuit {
         circuit.add_gate(control_ift, (0..n_qubits).collect());
 
         return circuit;
+    }
+
+}
+
+#[derive(Clone)]
+struct QuantumCircuitLayer {
+    n_qubits: usize,
+    gates: Vec<QuantumGateWithinputs>,
+}
+
+impl Display for QuantumCircuitLayer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut to_return = String::new();
+        for gate in &self.gates {
+            to_return.push_str(&format!("{:?} ", gate));
+        }
+        write!(f, "{}", to_return)
+    }
+}
+
+impl Debug for QuantumCircuitLayer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl QuantumCircuitLayer {
+
+    pub fn new(n_qubits: usize, gates: Vec<QuantumGateWithinputs>) -> Self {
+        let input_qubits = gates.iter().map(|gate| gate.1.clone()).flatten().collect::<Vec<_>>();
+        assert_eq!(input_qubits.len(), input_qubits.iter().unique().count());
+        assert!(input_qubits.iter().max() < Some(&n_qubits));
+        Self { n_qubits, gates }
+    }
+
+    pub fn as_gate(&self) -> QuantumGate {
+        let mut broad_gates = Vec::new();
+        for (gate, input_qubits) in self.gates.iter() {
+            broad_gates.push(Self::get_broad_gate(self.n_qubits, gate.clone(), input_qubits));
+        }
+        let mut gate = QuantumGate::identity(self.n_qubits);
+        for broad_gate in broad_gates.iter().rev() {
+            gate = gate.compose(&broad_gate);
+        }
+        return gate;
+    }
+
+    fn get_broad_gate(n_qubits: usize, gate: QuantumGate, input_qubits: &Vec<usize>) -> QuantumGate {
+        assert!(gate.n_qubits() > 0);
+        assert!(gate.n_qubits() == input_qubits.len());
+
+        let mut sorted_qubits = input_qubits.clone();
+        sorted_qubits.sort();
+        assert!(sorted_qubits.iter().zip(sorted_qubits.iter().skip(1)).all(|(a, b)| a != b));
+
+        let mut next = 0;
+        let mut completed_qubits = input_qubits.clone();
+        while completed_qubits.len() < n_qubits {
+            if completed_qubits.contains(&next) {
+                next += 1;
+            } else {
+                completed_qubits.push(next);
+                next += 1;
+            }
+        }
+        
+        let input_qubits_to_first_n = QuantumGate::permutation(&completed_qubits);
+        let first_n_to_input_qubits = QuantumGate::reverse_permutation(&completed_qubits);
+        let gate_to_add = if input_qubits.len() == n_qubits {
+            gate
+        } else {
+            let identity_gate = QuantumGate::identity(n_qubits - input_qubits.len());
+            identity_gate.clone().tensor_product(gate)
+        };
+
+        let broad_gate = gate_to_add.compose(&input_qubits_to_first_n);
+        let broad_gate = first_n_to_input_qubits.compose(&broad_gate);
+        
+        return broad_gate;
+
     }
 
 }
@@ -727,6 +809,68 @@ mod test_quantum_circuit {
 
         }
 
+    }
+
+    #[test]
+    fn test_quantum_circuit_layer_as_gate() {
+
+        let layer = QuantumCircuitLayer::new(1, vec![(QuantumGate::hadamard(), vec![0])]);
+        
+        assert!(layer.as_gate().almost_equals(&QuantumGate::hadamard()));
+
+        
+        let layer = QuantumCircuitLayer::new(2, vec![(QuantumGate::cnot(), vec![0, 1])]);
+        
+        assert!(layer.as_gate().almost_equals(&QuantumGate::cnot()));
+
+        let layer = QuantumCircuitLayer::new(
+            2,
+            vec![
+                (QuantumGate::hadamard(), vec![0]),
+                (QuantumGate::hadamard(), vec![1])
+            ]
+        );
+        
+        assert!(layer.as_gate().almost_equals(&QuantumGate::hadamard().tensor_product(QuantumGate::hadamard())));
+        
+        
+        let layer = QuantumCircuitLayer::new(
+            2,
+            vec![
+                (QuantumGate::not(), vec![0]),
+                (QuantumGate::identity(1), vec![1])
+            ]
+        );
+
+        // 00> -> 01>
+        // 01> -> 00>
+        // 10> -> 11>
+        // 11> -> 10>
+        
+        assert!(layer.clone().as_gate().almost_equals(&QuantumGate::identity(1).tensor_product(QuantumGate::not())), "{}", layer.clone().as_gate());
+        
+        
+        let layer = QuantumCircuitLayer::new(
+            2,
+            vec![
+                (QuantumGate::not(), vec![0]),
+                (QuantumGate::hadamard(), vec![1])
+            ]
+        );
+        
+        assert!(layer.clone().as_gate().almost_equals(&QuantumGate::hadamard().tensor_product(QuantumGate::not())), "{}", layer.clone().as_gate());
+        
+        
+        let layer = QuantumCircuitLayer::new(
+            4,
+            vec![
+                (QuantumGate::cnot(), vec![0, 1]),
+                (QuantumGate::hadamard(), vec![2]),
+                (QuantumGate::hadamard(), vec![3]),
+            ],
+        );
+
+        assert!(layer.as_gate().almost_equals(&QuantumGate::hadamard().tensor_product(QuantumGate::hadamard().tensor_product(QuantumGate::cnot()))));
     }
 
 }
