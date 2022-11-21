@@ -67,7 +67,7 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     draw_register(&model.drawer, &model.input, xy);
 
     let mut result = model.input.clone();
-    for gate in model.circuit.get_gates() {
+    for gate in model.circuit.get_layers() {
         xy = xy + vec2(REGISTER_TO_GATE_DELTA_X, 0.);
         draw_gate(&model.drawer, &gate.clone(), xy);
         xy = xy + vec2(GATE_TO_REGISTER_DELTA_X_PER_BASIS * (2usize.pow(gate.n_qubits() as u32) as f32), 0.);
