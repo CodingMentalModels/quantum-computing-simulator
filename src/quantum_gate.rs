@@ -604,13 +604,13 @@ mod test_quantum_gate {
 
     #[test]
     fn test_identity_gate() {
-        let gate = QuantumGate::identity(10);
-        assert_eq!(gate.n_qubits(), 10);
-        assert!(gate.apply(QuantumRegister::basis(10, 0)).almost_equals(QuantumRegister::basis(10, 0)));
-        assert!(gate.apply(QuantumRegister::basis(10, 1)).almost_equals(QuantumRegister::basis(10, 1)));
-        assert!(gate.apply(QuantumRegister::basis(10, 2)).almost_equals(QuantumRegister::basis(10, 2)));
-        assert!(gate.apply(QuantumRegister::basis(10, 3)).almost_equals(QuantumRegister::basis(10, 3)));
-        assert!(gate.apply(QuantumRegister::basis(10, 4)).almost_equals(QuantumRegister::basis(10, 4)));
+        let gate = QuantumGate::identity(8);
+        assert_eq!(gate.n_qubits(), 8);
+        assert!(gate.apply(QuantumRegister::basis(8, 0)).almost_equals(QuantumRegister::basis(8, 0)));
+        assert!(gate.apply(QuantumRegister::basis(8, 1)).almost_equals(QuantumRegister::basis(8, 1)));
+        assert!(gate.apply(QuantumRegister::basis(8, 2)).almost_equals(QuantumRegister::basis(8, 2)));
+        assert!(gate.apply(QuantumRegister::basis(8, 3)).almost_equals(QuantumRegister::basis(8, 3)));
+        assert!(gate.apply(QuantumRegister::basis(8, 4)).almost_equals(QuantumRegister::basis(8, 4)));
     }
 
     #[test]

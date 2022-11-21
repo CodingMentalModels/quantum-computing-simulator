@@ -138,10 +138,10 @@ mod test_nalgebra {
     #[test]
     fn test_square_matrix_identity() {
         
-        let matrix = SquareMatrix::identity(2usize.pow(10));
-        assert_eq!(matrix.size(), 2usize.pow(10));
+        let matrix = SquareMatrix::identity(2usize.pow(5));
+        assert_eq!(matrix.size(), 2usize.pow(5));
 
-        let v = Unit::<DVector<Complex<f32>>>::new_normalize(DVector::from_element(2usize.pow(10), Complex::one()));
+        let v = Unit::<DVector<Complex<f32>>>::new_normalize(DVector::from_element(2usize.pow(5), Complex::one()));
         assert!(Unit::<DVector<_>>::new_normalize(matrix * v.clone()) == v.clone());
 
     }
