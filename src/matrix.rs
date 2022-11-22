@@ -1,8 +1,121 @@
-use std::{ops::Mul, fmt::{Debug, Display, Formatter}};
+use std::{ops::Mul, fmt::{Debug, Display, Formatter}, collections::HashMap};
 
-use nalgebra::{Complex, DMatrix, Unit, DVector, Normed};
+use nalgebra::{Complex, ComplexField, DMatrix, Unit, DVector, Normed};
 use num_traits::{One, Zero};
 use std::f32::consts::SQRT_2;
+
+type SparseMatrixRepresentation = HashMap<usize, HashMap<usize, Complex<f32>>>;
+
+#[derive(Debug, Clone)]
+pub struct SparseMatrix {
+    size: usize,
+    data: SparseMatrixRepresentation,
+}
+
+impl From<DMatrix<Complex<f32>>> for SparseMatrix {
+    fn from(matrix: DMatrix<Complex<f32>>) -> Self {
+        let mut sparse_matrix: SparseMatrixRepresentation = HashMap::new();
+        for (i, row) in matrix.row_iter().enumerate() {
+            for (j, coefficient) in row.iter().enumerate() {
+                if !coefficient.is_zero() {
+                    if sparse_matrix.contains_key(&i) {
+                        sparse_matrix.get_mut(&i).unwrap().insert(j, *coefficient);
+                    } else {
+                        let mut row = HashMap::new();
+                        row.insert(j, *coefficient);
+                        sparse_matrix.insert(i, row);
+                    }
+                }
+            }
+        }
+        SparseMatrix::new(matrix.nrows(), sparse_matrix)
+    }
+}
+
+impl From<SparseMatrix> for DMatrix<Complex<f32>> {
+    fn from(sparse_matrix: SparseMatrix) -> Self {
+        DMatrix::from_fn(
+            sparse_matrix.size,
+            sparse_matrix.size,
+            |i, j| {
+                if sparse_matrix.data.contains_key(&i) {
+                    if sparse_matrix.data.get(&i).unwrap().contains_key(&j) {
+                        return *sparse_matrix.data.get(&i).unwrap().get(&j).unwrap();
+                    }
+                }
+                Complex::zero()
+            }
+        )
+    }
+}
+
+impl Mul<SparseMatrix> for SparseMatrix {
+    type Output = SparseMatrix;
+
+    fn mul(self, rhs: SparseMatrix) -> Self::Output {
+        let mut result: SparseMatrixRepresentation = HashMap::new();
+        for (i, row) in self.data.iter() {
+            for (j, lhs_coefficient) in row.iter() {
+                if rhs.data.contains_key(j) {
+                    for (k, rhs_coefficient) in rhs.data.get(j).unwrap().iter() {
+                        if result.contains_key(i) {
+                            if result.get_mut(i).unwrap().contains_key(k) {
+                                *result.get_mut(i).unwrap().get_mut(k).unwrap() += lhs_coefficient * rhs_coefficient;
+                            } else {
+                                result.get_mut(i).unwrap().insert(*k, lhs_coefficient * rhs_coefficient);
+                            }
+                        } else {
+                            let mut new_row = HashMap::new();
+                            new_row.insert(*k, lhs_coefficient * rhs_coefficient);
+                            result.insert(*i, new_row);
+                        }
+                    }
+                }
+            }
+        }
+        SparseMatrix::new(self.size, result)
+    }
+
+}
+
+impl SparseMatrix {
+
+    pub fn new(size: usize, data: SparseMatrixRepresentation) -> Self {
+        SparseMatrix {
+            size,
+            data,
+        }
+    }
+
+    pub fn get(&self, i: usize, j: usize) -> Complex<f32> {
+        match self.data.get(&i) {
+            Some(row) => match row.get(&j) {
+                Some(coefficient) => *coefficient,
+                None => Complex::zero(),
+            },
+            None => Complex::zero(),
+        }
+    }
+
+    pub fn get_size(&self) -> usize {
+        self.size
+    }
+
+    pub fn identity(size: usize) -> Self {
+        DMatrix::identity(size, size).into()
+    }
+
+    pub fn almost_equals(&self, other: &Self) -> bool {
+        for (i, row) in self.data.iter() {
+            for (j, coefficient) in row.iter() {
+                if !((other.get(*i, *j) - coefficient).abs() < 0.0001) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
 
 #[derive(Clone)]
 pub struct SquareMatrix {
@@ -247,25 +360,126 @@ mod test_nalgebra {
             )
         );
 
-        assert!(matrix.clone().swap_columns(0, 1).almost_equals(
-            &SquareMatrix::new_unitary(
-                DMatrix::from_vec(
-                    2,
-                    2,
-                    vec![
-                        Complex::from(2.0_f32),
-                        Complex::from(4.0_f32),
-                        Complex::from(1.0_f32),
-                        Complex::from(3.0_f32),
-                    ]
+        assert!(
+            matrix.clone().swap_columns(0, 1).almost_equals(
+                &SquareMatrix::new_unitary(
+                    DMatrix::from_vec(
+                        2,
+                        2,
+                        vec![
+                            Complex::from(2.0_f32),
+                            Complex::from(4.0_f32),
+                            Complex::from(1.0_f32),
+                            Complex::from(3.0_f32),
+                        ]
+                    )
                 )
+            ),
+            "{}",
+            matrix.swap_columns(0, 1)
+        );
+
+    }
+
+    #[test]
+    fn test_sparse_matrix_from_dmatrix() {
+        
+        let matrix = DMatrix::from_vec(
+            2,
+            2,
+            vec![
+                Complex::from(1.0_f32),
+                Complex::from(3.0_f32),
+                Complex::from(2.0_f32),
+                Complex::from(4.0_f32),
+            ]
+        );
+
+        let sparse = SparseMatrix::from(matrix.clone());
+
+        assert_eq!(sparse.get_size(), 2);
+        assert_eq!(sparse.get(0, 0), Complex::from(1.0_f32));
+        assert_eq!(sparse.get(0, 1), Complex::from(2.0_f32));
+        assert_eq!(sparse.get(1, 0), Complex::from(3.0_f32));
+        assert_eq!(sparse.get(1, 1), Complex::from(4.0_f32));
+
+        let original = DMatrix::<_>::from(sparse);
+        assert!((original - matrix).norm() < 0.0001);
+
+    }
+
+    #[test]
+    fn test_sparse_matrix_multiplication() {
+
+        let lhs = SparseMatrix::from(
+            DMatrix::from_vec(
+                2,
+                2,
+                vec![
+                    Complex::from(1.0_f32),
+                    Complex::from(3.0_f32),
+                    Complex::from(2.0_f32),
+                    Complex::from(4.0_f32),
+                ]
             )
-        ),
-        "{}",
-        matrix.swap_columns(0, 1)
-    );
+        );
+        let rhs = SparseMatrix::identity(2);
 
+        // 1 2
+        // 3 4
 
+        // 5 6
+        // 7 8
 
+        // 23 22
+        // 43 50
+
+        let result = lhs.clone() * rhs.clone();
+        assert!(result.almost_equals(&lhs));
+
+        let rhs = SparseMatrix::from(
+            DMatrix::from_vec(
+                2,
+                2,
+                vec![
+                    Complex::from(5.0_f32),
+                    Complex::from(7.0_f32),
+                    Complex::from(6.0_f32),
+                    Complex::from(8.0_f32),
+                ]
+            )
+        );
+
+        let result = lhs.clone() * rhs.clone();
+        assert!(
+            result.almost_equals(
+                &SparseMatrix::from(
+                    DMatrix::from_vec(
+                        2,
+                        2,
+                        vec![
+                            Complex::from(19.0_f32),
+                            Complex::from(43.0_f32),
+                            Complex::from(22.0_f32),
+                            Complex::from(50.0_f32),
+                        ]
+                    )
+                )
+            ),
+            "{}",
+            DMatrix::from(result)
+        );
+        
+    }
+
+    #[test]
+    fn test_sparse_matrix_multiplication_big() {
+        
+        let size = 2usize.pow(10);
+        let lhs = SparseMatrix::from(DMatrix::from_diagonal(&DVector::from_vec((0..size).map(|x| Complex::from(x as f32)).collect())));
+
+        let result = lhs.clone() * lhs;
+
+        assert_eq!(result.get_size(), size);
     }
 }
