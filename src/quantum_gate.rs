@@ -168,11 +168,6 @@ impl QuantumGate {
         Self::new(self.matrix.clone().invert())
     }
 
-    pub fn swap_bases(&mut self, i: usize, j: usize) {
-        let new_matrix = self.matrix.clone().swap_columns(i, j);
-        self.matrix = new_matrix;
-    }
-
 }
 
 
@@ -316,26 +311,6 @@ mod test_quantum_gate {
     }
 
     #[test]
-    fn test_quantum_gate_swaps_bases() {
-        
-        let mut gate = QuantumGate::cnot();
-        gate.swap_bases(0, 0);
-        assert!(gate.almost_equals(&QuantumGate::cnot()));
-
-        gate.swap_bases(0, 1);
-
-        let zero_zero = QuantumRegister::basis(2, 0);
-        let zero_one = QuantumRegister::basis(2, 1);
-        let one_one = QuantumRegister::basis(2, 2);
-        let one_zero = QuantumRegister::basis(2, 3);
-
-        assert!(gate.apply(zero_zero.clone()).almost_equals(zero_one.clone()));
-        assert!(gate.apply(zero_one.clone()).almost_equals(zero_zero.clone()));
-        assert!(gate.apply(one_zero.clone()).almost_equals(one_one.clone()));
-        assert!(gate.apply(one_one.clone()).almost_equals(one_zero.clone()));
-    }
-
-    #[test]
     fn test_permutation_matrix() {
         assert!(QuantumGate::permutation(&vec![0, 1]).almost_equals(&QuantumGate::identity(2)));
         assert_eq!(QuantumGate::permutation(&vec![0, 1, 2]).n_qubits(), 3);
@@ -392,7 +367,7 @@ mod test_quantum_gate {
     #[test]
     fn test_quantum_gates_compose() {
         
-        let n_qubits = 3;
+        let n_qubits = 10;
         let permutation = (0..n_qubits).collect();
         let permutation_gate = QuantumGate::permutation(&permutation);
         let reverse_permutation_gate = QuantumGate::reverse_permutation(&permutation);
