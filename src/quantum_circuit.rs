@@ -133,9 +133,30 @@ impl QuantumCircuit {
     }
     
     pub fn inverse_fourier_transform(n_qubits: usize) -> Self {
-        Self::fourier_transform(n_qubits).reverse()
+        let mut to_return = Self::new(n_qubits);
+        for i in 0..n_qubits {
+            let partial = Self::partial_inverse_fourier_transform(n_qubits, i);
+            to_return.extend(&partial);
+        }
+        to_return.add_gate(QuantumGate::reverse_permutation(&(0..n_qubits).rev().collect()), (0..n_qubits).collect());
+        return to_return;
     }
 
+    fn partial_inverse_fourier_transform(n_qubits: usize, start_idx: usize) -> Self {
+        let mut circuit = Self::new(n_qubits);
+        
+        let mut k = start_idx;
+        for i in (n_qubits - start_idx)..n_qubits {
+            let two_to_the_k = 2usize.pow((k + 1) as u32);
+            let phase_shift_gate = QuantumGate::controlled_phase_shift(-TAU / (two_to_the_k as f32));
+            circuit.add_gate(phase_shift_gate, vec![(n_qubits - 1) - start_idx, (n_qubits - 1) - (i - (n_qubits - start_idx))]);
+            k -= 1;
+        }
+
+        circuit.add_gate(QuantumGate::hadamard(), vec![n_qubits - start_idx - 1]);
+        
+        return circuit;
+    }
     pub fn order_finding(n_qubits: usize) -> Self {
         let control_qft = QuantumCircuit::fourier_transform(n_qubits).as_gate();
 
