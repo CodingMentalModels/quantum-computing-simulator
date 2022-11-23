@@ -144,7 +144,13 @@ impl SparseMatrix {
     }
 
     pub fn identity(size: usize) -> Self {
-        DMatrix::identity(size, size).into()
+        let mut data: SparseMatrixRepresentation = HashMap::new();
+        for i in 0..size {
+            let mut row = HashMap::new();
+            row.insert(i, Complex::one());
+            data.insert(i, row);
+        }
+        return SparseMatrix::new(size, data)
     }
 
     pub fn almost_equals(&self, other: &Self) -> bool {
