@@ -87,6 +87,10 @@ impl QuantumCircuit {
         self.n_qubits
     }
 
+    pub fn n_gates(&self) -> usize {
+        self.gates.len()
+    }
+
     pub fn get_gates(&self) -> Vec<QuantumGate> {
         self.gates.clone()
     }
@@ -163,11 +167,11 @@ impl QuantumCircuit {
     pub fn variably_controlled_gate(gate: QuantumGate) -> Self {
         let mut circuit = Self::new(2*gate.n_qubits());
         for i in 0..gate.n_qubits() {
-            let controlled_gate = QuantumGate::identity(1).tensor_product(gate.clone());
+            let controlled_gate = gate.clone().tensor_product(QuantumGate::identity(1));
             assert_eq!(controlled_gate.n_qubits(), gate.n_qubits() + 1);
             
-            let mut input_qubits = vec![i];
-            input_qubits.extend((gate.n_qubits()..(2*gate.n_qubits())).collect::<Vec<_>>());
+            let mut input_qubits = vec![gate.n_qubits() + i];
+            input_qubits.extend((0..gate.n_qubits()).collect::<Vec<_>>());
             
             assert_eq!(input_qubits.len(), controlled_gate.n_qubits());
             circuit.add_gate(controlled_gate, input_qubits);
@@ -769,6 +773,30 @@ mod test_quantum_circuit {
 
         }
 
+    }
+
+    #[test]
+    fn test_variably_controlled_gate() {
+
+        let circuit = QuantumCircuit::variably_controlled_gate(QuantumGate::hadamard());
+
+        // |00> -> |00>
+        // |01> -> |01> + |11>
+        // |10> -> |10>
+        // |11> -> |01> - |11>
+
+        assert!(circuit.clone().run(QuantumRegister::from_int(2, 0)).almost_equals(QuantumRegister::from_int(2, 0)), "{}", circuit.clone().run(QuantumRegister::from_int(2, 0)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(2, 1)).almost_equals(QuantumRegister::mixture(vec![QuantumRegister::from_int(2, 1), QuantumRegister::from_int(2, 3)])), "{}", circuit.clone().run(QuantumRegister::from_int(2, 1)));
+        assert!(circuit.clone().run(QuantumRegister::from_int(2, 2)).almost_equals(QuantumRegister::from_int(2, 2)));
+
+
+        // let circuit = QuantumCircuit::variably_controlled_gate(QuantumGate::multiplication_mod_n(2, 1));
+
+        // |0000> -> |0000>
+        // |0001> -> |0001>
+        // |0010> -> |0010>
+        // |0011> -> |0011>
+        
     }
 
 }
