@@ -153,6 +153,34 @@ impl SparseMatrix {
         return SparseMatrix::new(size, data)
     }
 
+    pub fn tensor_product(&self, rhs: &Self) -> Self {
+
+        let mut result: SparseMatrixRepresentation = HashMap::new();
+
+        for (i, row) in self.data.iter() {
+            for (j, coefficient) in row.iter() {
+                let start_row = i * rhs.size;
+                let start_column = j * rhs.size;
+                for (k, rhs_row) in rhs.data.iter() {
+                    for (l, rhs_coefficient) in rhs_row.iter() {
+                        if result.contains_key(&(start_row + k)) {
+                            if result.get_mut(&(start_row + k)).unwrap().contains_key(&(start_column + l)) {
+                                *result.get_mut(&(start_row + k)).unwrap().get_mut(&(start_column + l)).unwrap() += coefficient * rhs_coefficient;
+                            } else {
+                                result.get_mut(&(start_row + k)).unwrap().insert(start_column + l, coefficient * rhs_coefficient);
+                            }
+                        } else {
+                            let mut new_row = HashMap::new();
+                            new_row.insert(start_column + l, coefficient * rhs_coefficient);
+                            result.insert(start_row + k, new_row);
+                        }
+                    }
+                }
+            }
+        }
+        return SparseMatrix::new(self.size + rhs.size, result);
+    }
+
     pub fn almost_equals(&self, other: &Self) -> bool {
         for (i, row) in self.data.iter() {
             for (j, coefficient) in row.iter() {
@@ -270,11 +298,7 @@ impl SquareMatrix {
     }
     
     pub fn tensor_product(&self, rhs: &Self) -> Self {
-        Self::new_unchecked(
-            SparseMatrix::from(
-                DMatrix::from(self.matrix.clone()).kronecker(&DMatrix::from(rhs.matrix.clone()))
-            )
-        )
+        Self::new_unchecked(self.matrix.tensor_product(&rhs.matrix))
     }
 
     pub fn invert(&self) -> Self {
