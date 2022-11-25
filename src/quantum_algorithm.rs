@@ -1,4 +1,5 @@
-use crate::{quantum_circuit::QuantumCircuit, quantum_gate::QuantumRegister};
+use crate::{quantum_circuit::QuantumCircuit};
+use crate::quantum_register::QuantumRegister;
 
 
 
@@ -16,7 +17,7 @@ impl OrderFindingAlgorithm {
     }
 
     pub fn run(&mut self) -> u8 {
-        let n_qubits = self.circuit.n_qubits();
+        let n_qubits = self.circuit.n_qubits() / 2;
         let control_register = QuantumRegister::basis(n_qubits, 0);
         let target_register = QuantumRegister::basis(n_qubits, 1);
 
@@ -36,12 +37,12 @@ impl OrderFindingAlgorithm {
 mod test_quantum_algorithm {
     use super::*;
 
-    // #[test]
-    // fn test_order_finding_algorithm() {
+    #[test]
+    fn test_order_finding_algorithm() {
         
-    //     let mut algorithm = OrderFindingAlgorithm::new(15);
-    //     let result = algorithm.run();
-    //     assert_eq!(result, 3);
+        let mut algorithm = OrderFindingAlgorithm::new(6);
+        let result = algorithm.run();
+        assert_eq!(result, 3);
 
-    // }
+    }
 }
