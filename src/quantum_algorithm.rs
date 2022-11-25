@@ -12,8 +12,11 @@ pub struct OrderFindingAlgorithm {
 impl OrderFindingAlgorithm {
 
     pub fn new(capital_n: u32) -> Self {
-        let n_qubits = 2 * (capital_n.log(2) + 1) as usize;
-        Self {capital_n, circuit: QuantumCircuit::order_finding(n_qubits)}
+        Self {capital_n, circuit: QuantumCircuit::order_finding(capital_n as usize)}
+    }
+
+    pub fn get_circuit(&self) -> &QuantumCircuit {
+        &self.circuit
     }
 
     pub fn run(&mut self) -> u8 {

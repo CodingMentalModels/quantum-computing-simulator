@@ -5,6 +5,8 @@ use crate::quantum_register::QuantumRegister;
 use std::f32::consts::{TAU, SQRT_2};
 use std::fmt::{Display, Debug, Formatter};
 
+use num::integer::gcd;
+
 use itertools::Itertools;
 use nalgebra::{Complex, ComplexField};
 
@@ -157,17 +159,35 @@ impl QuantumCircuit {
         
         return circuit;
     }
-    pub fn order_finding(n_qubits: usize) -> Self {
+
+    pub fn variably_controlled_gate(gate: QuantumGate) -> Self {
+        let mut circuit = Self::new(2*gate.n_qubits());
+        for i in 0..gate.n_qubits() {
+            let controlled_gate = QuantumGate::identity(1).tensor_product(gate.clone());
+            assert_eq!(controlled_gate.n_qubits(), gate.n_qubits() + 1);
+            
+            let mut input_qubits = vec![i];
+            input_qubits.extend((gate.n_qubits()..(2*gate.n_qubits())).collect::<Vec<_>>());
+            
+            assert_eq!(input_qubits.len(), controlled_gate.n_qubits());
+            circuit.add_gate(controlled_gate, input_qubits);
+        }
+        return circuit;
+    }
+
+    pub fn order_finding(capital_n: usize) -> Self {
+        let n_qubits = 2 * (capital_n.log(2) + 1) as usize;
         let control_qft = QuantumCircuit::fourier_transform(n_qubits).as_gate();
 
-        // STUB!!!!
-        let periodic_function = QuantumGate::identity(2*n_qubits);
+        // STUB! 
+        let a = (2..capital_n).filter(|a| gcd(*a, capital_n) == 1).next().expect("There should always be values that have gcd == 1.");
+        let periodic_function = QuantumCircuit::variably_controlled_gate(QuantumGate::multiplication_mod_n_extended(n_qubits, capital_n, a));
         
         let control_ift = QuantumCircuit::inverse_fourier_transform(n_qubits).as_gate();
 
         let mut circuit = QuantumCircuit::new(2*n_qubits);
         circuit.add_gate(control_qft, (0..n_qubits).collect());
-        circuit.add_gate(periodic_function, (0..2*n_qubits).collect());
+        circuit.extend(&periodic_function);
         circuit.add_gate(control_ift, (0..n_qubits).collect());
 
         return circuit;

@@ -1,7 +1,7 @@
 use nalgebra::{Complex, ComplexField};
 use nannou::{prelude::*, color::{self, IntoLinSrgba}, draw::properties::ColorScalar, text::{Text, FontSize, layout::DEFAULT_FONT_SIZE}};
 
-use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate}};
+use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate}, quantum_algorithm::OrderFindingAlgorithm};
 use crate::quantum_register::QuantumRegister;
 
 const BACKGROUND_COLOR: u32 = 0x121212;
@@ -30,15 +30,11 @@ pub fn model(app: &App) -> Model {
     let window = app.new_window().view(view).build().unwrap();
 
     // Instantiation
-    // let mut circuit = QuantumCircuit::new(2);
-    // circuit.add_gate(QuantumGate::hadamard(), vec![0]);
-    // circuit.add_gate(QuantumGate::global_rotation(1, TAU/4.), vec![0]);
-    // circuit.add_gate(QuantumGate::hadamard(), vec![1]);
-    // circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
-    let mut circuit = QuantumCircuit::inverse_fourier_transform(3);
+    let algorithm = OrderFindingAlgorithm::new(2);
 
-    let input = QuantumRegister::basis(3, 1);
+    let circuit = algorithm.get_circuit().clone();
+    let input = QuantumRegister::basis(circuit.n_qubits(), 1);
     
     Model { window, circuit, input, drawer: ZoomedDrawer::new(app.draw()) }
 }

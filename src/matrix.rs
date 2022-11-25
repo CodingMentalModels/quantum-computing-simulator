@@ -178,7 +178,7 @@ impl SparseMatrix {
                 }
             }
         }
-        return SparseMatrix::new(self.size + rhs.size, result);
+        return SparseMatrix::new(self.size * rhs.size, result);
     }
 
     pub fn almost_equals(&self, other: &Self) -> bool {
@@ -422,6 +422,16 @@ mod test_nalgebra {
 
         assert!(result.clone().almost_equals(&(expected.clone())), "{:?} * {:?} = {:?}", id, m.clone(), result.clone());
         
+
+        assert_eq!(
+            SquareMatrix::identity(1).tensor_product(&SquareMatrix::identity(5)).size(),
+            5
+        );
+
+        assert_eq!(
+            SquareMatrix::identity(1).tensor_product(&SquareMatrix::from_vec_normalize(2, vec![0, 1, 1, 0].iter().map(|x| Complex::from(*x as f32)).collect())).size(),
+            2
+        );
     }
 
     #[test]
