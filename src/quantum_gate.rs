@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter, Debug};
 
 use nalgebra::{Complex, Unit, Normed, ComplexField};
 use num_traits::{One, Zero};
+use num::integer::gcd;
 use rand::Rng;
 
 use crate::quantum_register::QuantumRegister;
@@ -70,6 +71,18 @@ impl QuantumGate {
             qubit_permutation[j] = i;
         }
         Self::permutation(&qubit_permutation)
+    }
+
+    pub fn multiplication_mod_n(n: usize, a: usize) -> Self {
+        Self::multiplication_mod_n_extended(n, n, a)
+    }
+    
+    pub fn multiplication_mod_n_extended(n_qubits: usize, n: usize, a: usize) -> Self {
+        assert!(n_qubits >= n);
+        assert!(gcd(n, a) == 1);
+        let mut permutation: Vec<usize> = (0..n).map(|i| (i * a) % n).collect();
+        permutation.extend::<Vec<usize>>((n..n_qubits).map(|i| i).collect());
+        Self::permutation(&permutation)
     }
 
     pub fn tensor_product(&self, rhs: Self) -> Self {
@@ -379,6 +392,33 @@ mod test_quantum_gate {
     }
 
     #[test]
+    fn test_quantum_gate_tensor_products() {
+        assert!(
+            QuantumGate::identity(1).tensor_product(QuantumGate::identity(1)).almost_equals(
+                &QuantumGate::identity(2)
+            )
+        );
+
+        assert!(
+            QuantumGate::identity(1).tensor_product(QuantumGate::permutation(&(0..5usize).collect())).almost_equals(
+                &QuantumGate::identity(6)
+            )
+        );
+
+        
+        assert_eq!(
+            QuantumGate::identity(1).tensor_product(QuantumGate::permutation(&vec![1, 0])).n_qubits(),
+            3
+        );
+
+        assert_eq!(
+            QuantumGate::identity(1).tensor_product(QuantumGate::permutation(&vec![1, 2, 4, 3, 0])).n_qubits(),
+            6
+        );
+
+    }
+
+    #[test]
     fn test_measurement_interference() {
 
         // Circuit with measurement in the middle:
@@ -422,5 +462,39 @@ mod test_quantum_gate {
         assert!(after_measurement.almost_equals(Qubit::basis_0()));
         
     }
+
+    
+    #[test]
+    fn test_multiplication_mod_n() {
+        
+        let capital_n = 15;
+        let a = 2;
+
+        let gate = QuantumGate::multiplication_mod_n(capital_n, a);
+
+        // 2 * 0 = 0
+        // 2 * 1 = 2
+        // 2 * 2 = 4
+        // 2 * 3 = 6
+        // 2 * 4 = 8
+        // 2 * 5 = 10
+        // 2 * 6 = 12
+        // 2 * 7 = 14
+        // 2 * 8 = 1
+        // 2 * 9 = 3
+        // 2 * 10 = 5
+        // 2 * 11 = 7
+        // 2 * 12 = 9
+        // 2 * 13 = 11
+        // 2 * 14 = 13
+
+        let expected_permutation = QuantumGate::permutation(
+            &vec![0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13]
+        );
+
+        assert!(gate.almost_equals(&expected_permutation));
+
+    }
+
 
 }

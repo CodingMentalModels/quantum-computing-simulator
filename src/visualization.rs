@@ -1,7 +1,7 @@
 use nalgebra::{Complex, ComplexField};
 use nannou::{prelude::*, color::{self, IntoLinSrgba}, draw::properties::ColorScalar, text::{Text, FontSize, layout::DEFAULT_FONT_SIZE}};
 
-use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate}};
+use crate::{quantum_circuit::QuantumCircuit, quantum_gate::{QuantumGate}, quantum_algorithm::OrderFindingAlgorithm};
 use crate::quantum_register::QuantumRegister;
 
 const BACKGROUND_COLOR: u32 = 0x121212;
@@ -23,24 +23,60 @@ pub struct Model {
     window: window::Id,
     drawer: ZoomedDrawer,
     circuit: QuantumCircuit,
-    input: QuantumRegister,
+    input_basis: usize,
+}
+
+impl Model {
+
+    pub fn new(window: window::Id, drawer: ZoomedDrawer, circuit: QuantumCircuit, input: usize) -> Self {
+        Self {window, drawer, circuit, input_basis: input}
+    }
+
+    pub fn get_circuit(&self) -> &QuantumCircuit {
+        &self.circuit
+    }
+
+    pub fn get_input(&self) -> usize {
+        self.input_basis
+    }
+
+    pub fn get_drawer(&self) -> &ZoomedDrawer {
+        &self.drawer
+    }
+
+    pub fn get_drawer_mut(&mut self) -> &mut ZoomedDrawer {
+        &mut self.drawer
+    }
+
+    pub fn get_window(&self) -> &window::Id {
+        &self.window
+    }
+
+    pub fn get_window_mut(&mut self) -> &mut window::Id {
+        &mut self.window
+    }
+
+    pub fn update_n_qubits(&mut self, n_qubits: usize) {
+        self.circuit = QuantumCircuit::fourier_transform(n_qubits);
+    }
+
+    pub fn update_input_basis(&mut self, input_basis: usize) {
+        self.input_basis = input_basis;
+    }
+
 }
 
 pub fn model(app: &App) -> Model {
     let window = app.new_window().view(view).build().unwrap();
 
     // Instantiation
-    // let mut circuit = QuantumCircuit::new(2);
-    // circuit.add_gate(QuantumGate::hadamard(), vec![0]);
-    // circuit.add_gate(QuantumGate::global_rotation(1, TAU/4.), vec![0]);
-    // circuit.add_gate(QuantumGate::hadamard(), vec![1]);
-    // circuit.add_gate(QuantumGate::cnot(), vec![0, 1]);
 
-    let mut circuit = QuantumCircuit::inverse_fourier_transform(3);
+    let n_qubits = 4;
 
-    let input = QuantumRegister::basis(3, 1);
-    
-    Model { window, circuit, input, drawer: ZoomedDrawer::new(app.draw()) }
+    let circuit = QuantumCircuit::fourier_transform(n_qubits);
+
+    Model::new(window, ZoomedDrawer::new(app.draw()), circuit, 0)
+
 }
 
 pub fn update(app: &App, model: &mut Model, _update: Update) {
@@ -52,6 +88,14 @@ pub fn update(app: &App, model: &mut Model, _update: Update) {
             Key::A => model.drawer.adjust_offset(-vec2(-OFFSET_SPEED, 0.)),
             Key::S => model.drawer.adjust_offset(-vec2(0., -OFFSET_SPEED)),
             Key::D => model.drawer.adjust_offset(-vec2(OFFSET_SPEED, 0.)),
+            Key::Key1 => model.update_n_qubits(1),
+            Key::Key2 => model.update_n_qubits(2),
+            Key::Key3 => model.update_n_qubits(3),
+            Key::Key4 => model.update_n_qubits(4),
+            Key::Key5 => model.update_n_qubits(5),
+            Key::Key6 => model.update_n_qubits(6),
+            Key::Equals => if (model.input_basis < 2usize.pow(model.circuit.n_qubits() as u32) - 1) { model.update_input_basis(model.input_basis + 1)},
+            Key::Minus => if (model.input_basis > 0) {model.update_input_basis(model.input_basis - 1)},
             _ => (),
         }
     });
@@ -62,11 +106,12 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     draw.background().color(color::rgb_u32(BACKGROUND_COLOR));
 
     draw_legend(&model.drawer, vec2(0., app.window_rect().top()));
-    
-    let mut xy = Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.);
-    draw_register(&model.drawer, &model.input, xy);
 
-    let mut result = model.input.clone();
+    let mut xy = Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.);
+    let input_register = QuantumRegister::basis(model.circuit.n_qubits(), model.input_basis);
+    draw_register(&model.drawer, &input_register, xy);
+
+    let mut result = input_register.clone();
     for gate in model.circuit.get_gates() {
         xy = xy + vec2(REGISTER_TO_GATE_DELTA_X, 0.);
         draw_gate(&model.drawer, &gate.clone(), xy);
