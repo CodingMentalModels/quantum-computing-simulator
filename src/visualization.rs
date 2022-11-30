@@ -107,7 +107,6 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
 
     draw_legend(&model.drawer, vec2(0., app.window_rect().top()));
 
-    model.drawer.text(&format!("Input basis: {}", model.input_basis), color::rgb_u32(TEXT_COLOR), vec2(0., app.window_rect().top() - LEGEND_DELTA_Y));
     let mut xy = Point2::new(app.window_rect().left() + COMPLEX_RECT_HEIGHT / 2.0 + PADDING, 0.);
     let input_register = QuantumRegister::basis(model.circuit.n_qubits(), model.input_basis);
     draw_register(&model.drawer, &input_register, xy);
